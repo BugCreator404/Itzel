@@ -1,11 +1,16 @@
-"""Endpoint POST /api/v1/chat — streaming SSE de tokens.
+"""Endpoint POST /api/v1/chat — streaming SSE de tokens con modelo real.
 
-Flujo:
-  1. Recibe { message, session_id?, model?, stream }
-  2. Broadcast WS → mascot:"work"
-  3. Emite tokens via SSE  →  data: <token>\n\n
-  4. Al terminar           →  data: [DONE]\n\n  + broadcast mascot:"idle"
-  5. En error              →  data: [ERROR:<msg>]\n\n + broadcast mascot:"idle"
+Flujo completo:
+  1. Recibe { message, session_id?, language?, stream }
+  2. Guarda mensaje del usuario en SQLite
+  3. Carga historial de la sesión desde SQLite
+  4. Construye system prompt localizado (ES-MX / EN-US)
+  5. Ensambla [system, ...history, user_msg]
+  6. Llama al adaptador activo (llama.cpp → Ollama → NoModel)
+  7. Emite tokens vía SSE  →  data: <token>\\n\\n
+  8. Al terminar           →  data: [DONE]\\n\\n  + mascot:"happy"
+  9. Guarda respuesta completa en SQLite
+  10. En error             →  data: [ERROR]\\n\\n  + mascot:"idle"
 """
 
 from __future__ import annotations
@@ -18,82 +23,152 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from ...config import config
 from ...logger import log_api
+from ...memory import MemoryStore
+from ...models.base import GenerationError, GenerationParams, ModelNotAvailableError
 from ...rate_limiter import RateLimiter
+from ...router import build_messages, build_system_prompt, get_adapter
 from ...ws_manager import WsMessage, ws_manager
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Rate limiter local al módulo (se sobreescribirá desde engine si se inyecta)
 _rate_limiter = RateLimiter(model_rps=10)
+
+# Una sola conexión SQLite por proceso
+_memory = MemoryStore()
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    message: str
+    message:    str
     session_id: Optional[str] = None
-    model: Optional[str] = None
-    stream: bool = True
+    language:   Optional[str] = None   # "es-MX" | "en-US"; default de config
+    stream:     bool = True
 
 
 class ChatResponse(BaseModel):
-    id: str
+    id:         str
     session_id: str
-    content: str
-    model: str
+    content:    str
+    model:      str
 
 
 # ── Helpers SSE ────────────────────────────────────────────────────────────
 
 def _sse(data: str) -> str:
-    """Formatea una línea SSE."""
     return f"data: {data}\n\n"
 
 
+# ── Stream principal ───────────────────────────────────────────────────────
+
 async def _stream_tokens(
-    message: str,
+    message:    str,
     session_id: str,
-    model_name: str,
+    language:   str,
 ) -> AsyncGenerator[str, None]:
     """
-    Genera tokens como SSE.
+    Genera tokens reales desde el adaptador activo y los emite como SSE.
 
-    Ahora: simula un stream con el placeholder.
-    TODO(v2): reemplazar por llamada real a llama.cpp / Ollama.
+    Pasos:
+      1. Guarda el mensaje del usuario en SQLite.
+      2. Recupera el historial previo de la sesión.
+      3. Construye el system prompt + lista de mensajes.
+      4. Llama al adaptador para hacer streaming.
+      5. Guarda la respuesta completa al finalizar.
     """
-    # Notificar a todos los clientes WS que la mascota está trabajando
+    adapter      = await get_adapter()
+    adapter_info = await adapter.info()
+    model_name   = adapter_info.id
+
     await ws_manager.broadcast(WsMessage.status("work", model=model_name))
 
+    accumulated: list[str] = []
+
     try:
-        # ── Respuesta placeholder — reemplazar en v2 ──────────────
-        placeholder = (
-            "Hola, soy Itzel 🦎 — el backend real con llama.cpp "
-            "estará disponible en la siguiente sesión. "
-            f"Tu mensaje fue: «{message}»"
+        # 1. Guardar mensaje del usuario
+        _memory.save(role="user", content=message, session_id=session_id)
+
+        # 2. Historial previo (excluimos el último entry = el que acabamos de guardar)
+        history_entries = _memory.get_session(session_id, limit=60)
+        prior_entries   = history_entries[:-1]
+        history_msgs    = [
+            {"role": e.role, "content": e.content}
+            for e in prior_entries
+            if e.role in ("user", "assistant")
+        ]
+
+        # 3. System prompt + mensajes
+        system_prompt = build_system_prompt(
+            session_id = session_id,
+            model_name = model_name,
+            language   = language,
         )
-        for token in placeholder.split(" "):
-            yield _sse(token + " ")
-            await asyncio.sleep(0.04)   # simula latencia de inferencia
-        # ── fin placeholder ───────────────────────────────────────
+        messages = build_messages(
+            system_prompt = system_prompt,
+            history       = history_msgs,
+            new_message   = message,
+        )
+
+        # 4. Inferencia
+        params = GenerationParams(
+            temperature = config.model.temperature,
+            top_p       = config.model.top_p,
+            max_tokens  = config.model.max_tokens,
+        )
+        async for token in adapter.stream(messages, params):
+            accumulated.append(token)
+            yield _sse(token)
 
         yield _sse("[DONE]")
+
+        # 5. Guardar respuesta completa
+        full_response = "".join(accumulated)
+        if full_response:
+            _memory.save(
+                role       = "assistant",
+                content    = full_response,
+                session_id = session_id,
+                metadata   = {"model": model_name, "language": language},
+            )
+
         log_api.info(
-            "Chat completado",
+            "Chat completado — %d tokens",
+            len(accumulated),
             extra={"component": "chat", "session_id": session_id, "model": model_name},
         )
+        await ws_manager.broadcast(WsMessage.status("happy", model=model_name))
+
+    except ModelNotAvailableError as exc:
+        yield _sse(str(exc))
+        yield _sse("[DONE]")
+        log_api.warning("Modelo no disponible: %s", exc, extra={"session_id": session_id})
+        await ws_manager.broadcast(WsMessage.status("idle", model=model_name))
+
+    except GenerationError as exc:
+        yield _sse(f"\n\n⚠ Error de generación: {exc.cause}")
+        yield _sse("[ERROR]")
+        log_api.error("Error de generación: %s", exc, extra={"session_id": session_id})
+        await ws_manager.broadcast(WsMessage.status("idle", model=model_name))
 
     except asyncio.CancelledError:
-        yield _sse("[ERROR:Generación cancelada]")
+        if accumulated:
+            _memory.save(
+                role       = "assistant",
+                content    = "".join(accumulated) + " [cancelado]",
+                session_id = session_id,
+                metadata   = {"model": model_name, "cancelled": True},
+            )
+        yield _sse("[CANCELLED]")
         log_api.warning("Stream cancelado por el cliente", extra={"session_id": session_id})
+        await ws_manager.broadcast(WsMessage.status("idle", model=model_name))
         raise
 
     except Exception as exc:
-        yield _sse(f"[ERROR:{exc}]")
-        log_api.error("Error en stream: %s", exc, extra={"session_id": session_id})
-
-    finally:
-        # Siempre restaurar mascota a idle, incluso si hubo error
+        yield _sse(f"\n\n⚠ Error inesperado: {exc}")
+        yield _sse("[ERROR]")
+        log_api.error("Error inesperado en stream: %s", exc, extra={"session_id": session_id})
         await ws_manager.broadcast(WsMessage.status("idle", model=model_name))
 
 
@@ -102,36 +177,54 @@ async def _stream_tokens(
 @router.post("/", response_model=ChatResponse)
 async def chat(req: ChatRequest, request: Request) -> StreamingResponse | ChatResponse:
     session_id = req.session_id or str(uuid4())
-    model_name = req.model or "itzel-1b"
+    language   = req.language or config.language  # "es-MX" por defecto
 
-    # Rate limiting
     allowed = await _rate_limiter.check("model")
     if not allowed:
         log_api.warning("Rate limit alcanzado", extra={"path": "/chat", "session_id": session_id})
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Demasiadas solicitudes. Espera un momento antes de intentar de nuevo.",
+            detail="Demasiadas solicitudes. Espera un momento.",
         )
 
     if req.stream:
         return StreamingResponse(
-            _stream_tokens(req.message, session_id, model_name),
+            _stream_tokens(req.message, session_id, language),
             media_type="text/event-stream",
             headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",   # desactiva buffering en nginx si hay proxy
-                "X-Session-Id": session_id,
+                "Cache-Control":     "no-cache",
+                "X-Accel-Buffering": "no",
+                "X-Session-Id":      session_id,
             },
         )
 
-    # Respuesta síncrona (sin streaming) — para clientes CLI simples
-    full_response = (
-        f"Hola, soy Itzel 🦎 — modelo: {model_name}. "
-        f"Tu mensaje fue: «{req.message}»"
-    )
+    # ── Respuesta síncrona (para CLI sin streaming) ────────────────
+    tokens: list[str] = []
+    async for raw in _stream_tokens(req.message, session_id, language):
+        if not raw.startswith("data: "):
+            continue
+        payload = raw[6:].strip()
+        if payload in ("[DONE]", "[ERROR]", "[CANCELLED]"):
+            break
+        tokens.append(payload)
+
+    adapter_info = await (await get_adapter()).info()
     return ChatResponse(
-        id=str(uuid4()),
-        session_id=session_id,
-        content=full_response,
-        model=model_name,
+        id         = str(uuid4()),
+        session_id = session_id,
+        content    = "".join(tokens),
+        model      = adapter_info.id,
+    )
+
+
+@router.delete("/{session_id}", status_code=204)
+async def clear_session(session_id: str) -> None:
+    """Borra el historial de una sesión de la memoria."""
+    _memory._conn.execute(
+        "DELETE FROM messages WHERE session_id = ?", (session_id,)
+    )
+    _memory._conn.commit()
+    log_api.info(
+        "Sesión borrada: %s", session_id,
+        extra={"component": "chat", "session_id": session_id},
     )

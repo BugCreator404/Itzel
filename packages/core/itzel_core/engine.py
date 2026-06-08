@@ -23,10 +23,12 @@ from .api.v1 import websocket as ws_route
 from .config import config
 from .logger import log_engine
 from .middleware import AgentTimeoutMiddleware, RequestLoggerMiddleware
+from .models import get_adapter
+from .models.base import ModelNotAvailableError
 from .rate_limiter import RateLimiter
 from .ws_manager import ws_manager
 
-_IS_DEV = os.getenv("ITZEL_ENV", "development") != "production"
+_IS_DEV   = os.getenv("ITZEL_ENV", "development") != "production"
 _START_TS = time.time()
 
 
@@ -36,9 +38,42 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Itzel backend arrancando",
         extra={"component": "engine", "host": config.server.host, "port": config.server.port},
     )
-    # TODO(v2): cargar modelo llama.cpp / Ollama
-    # TODO(v3): cargar Whisper STT + Kokoro TTS
+
+    # ── Detección y carga del modelo ────────────────────────────────
+    # get_adapter() detecta automáticamente qué está disponible:
+    #   1. llama.cpp + .gguf   → carga el modelo en memoria (~2-10s)
+    #   2. Ollama en :11434    → verifica conectividad
+    #   3. NoModelAdapter      → responde con instrucciones de instalación
+    try:
+        adapter = await get_adapter()
+        info    = await adapter.info()
+        log_engine.info(
+            "Modelo activo: %s (backend: %s, cargado: %s)",
+            info.name, info.backend, info.loaded,
+            extra={"component": "engine", "model": info.id},
+        )
+    except ModelNotAvailableError as exc:
+        # No bloqueamos el arranque — el endpoint de chat manejará el error
+        log_engine.warning(
+            "No hay modelo disponible al arrancar: %s", exc,
+            extra={"component": "engine"},
+        )
+    except Exception as exc:
+        log_engine.error(
+            "Error inesperado al inicializar el modelo: %s", exc,
+            extra={"component": "engine"},
+        )
+
+    elapsed = time.time() - _START_TS
+    log_engine.info(
+        "Backend listo en %.2fs — escuchando en %s:%d",
+        elapsed, config.server.host, config.server.port,
+        extra={"component": "engine"},
+    )
+
     yield
+
+    # ── Teardown ────────────────────────────────────────────────────
     log_engine.info("Itzel backend detenido", extra={"component": "engine"})
 
 
@@ -47,14 +82,13 @@ def create_app() -> FastAPI:
         title="Itzel API",
         description="IA personal local — 100% on-device · MIT License",
         version="0.1.0",
-        # OpenAPI solo en desarrollo — sin docs en producción
-        docs_url="/api/docs"    if _IS_DEV else None,
-        redoc_url="/api/redoc"  if _IS_DEV else None,
-        openapi_url="/api/openapi.json" if _IS_DEV else None,
+        docs_url    ="/api/docs"         if _IS_DEV else None,
+        redoc_url   ="/api/redoc"        if _IS_DEV else None,
+        openapi_url ="/api/openapi.json" if _IS_DEV else None,
         lifespan=lifespan,
     )
 
-    # ── Middleware (orden: el primero registrado es el más externo) ──
+    # ── Middleware (el primero registrado es el más externo) ─────────
     app.add_middleware(AgentTimeoutMiddleware, timeout_s=120.0)
     app.add_middleware(RequestLoggerMiddleware)
 
@@ -62,9 +96,9 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "http://localhost:1420",    # Tauri dev server
-            "tauri://localhost",        # Tauri producción macOS/Linux
-            "https://tauri.localhost",  # Tauri producción Windows
+            "http://localhost:1420",   # Tauri dev server
+            "tauri://localhost",       # Tauri producción macOS/Linux
+            "https://tauri.localhost", # Tauri producción Windows
         ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
@@ -90,10 +124,9 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "itzel_core.engine:app",
-        host=config.server.host,
-        port=config.server.port,
-        reload=_IS_DEV,
-        log_level="debug" if _IS_DEV else "warning",
-        # Un solo worker — el modelo no es thread-safe
-        workers=1,
+        host      = config.server.host,
+        port      = config.server.port,
+        reload    = _IS_DEV,
+        log_level = "debug" if _IS_DEV else "warning",
+        workers   = 1,  # un solo worker — el modelo no es thread-safe
     )
