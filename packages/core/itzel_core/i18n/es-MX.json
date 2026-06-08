@@ -1,0 +1,70 @@
+{
+  "lang": "es-MX",
+  "name": "Español (México)",
+
+  "app": {
+    "name": "Itzel",
+    "tagline": "Tu IA personal local y open source",
+    "version": "Versión"
+  },
+
+  "greetings": {
+    "morning": "¡Buenos días! Soy Itzel 🦎",
+    "afternoon": "¡Buenas tardes! ¿En qué te ayudo?",
+    "evening": "¡Buenas noches! Aquí estoy.",
+    "generic": "¡Hola! Soy Itzel, tu IA personal."
+  },
+
+  "mascot": {
+    "idle": "...",
+    "work": "Trabajando...",
+    "think": "Mmmm… déjame ver",
+    "happy": "¡Yay! ✨",
+    "wave": "¡Holaaa! 👋",
+    "sleep": "Zzz..."
+  },
+
+  "cli": {
+    "setup_welcome": "Bienvenido a Itzel Setup 🦎",
+    "setup_desc": "Vamos a configurar tu IA personal.",
+    "backend_offline": "Backend no disponible — ejecuta `itzel setup` primero.",
+    "voice_unavailable": "Voz no disponible — ejecuta `itzel setup` primero.",
+    "model_not_found": "Modelo {name} no encontrado localmente.",
+    "confirm_action": "¿Estás seguro?",
+    "cancelled": "Operación cancelada.",
+    "success": "✓ Listo.",
+    "error": "✗ Error: {message}"
+  },
+
+  "errors": {
+    "model_not_loaded": "El modelo no está cargado. Ejecuta `itzel setup`.",
+    "voice_not_loaded": "El sistema de voz no está inicializado.",
+    "backend_unreachable": "No se puede conectar al backend en {url}.",
+    "config_not_found": "Archivo de configuración no encontrado.",
+    "permission_denied": "Permiso denegado para: {action}.",
+    "action_cancelled": "Acción cancelada por el usuario.",
+    "unknown": "Error desconocido. Revisa los logs en ~/.itzel/logs/"
+  },
+
+  "confirmations": {
+    "delete_file": "¿Eliminar '{path}'? Esta acción no se puede deshacer.",
+    "clear_memory": "¿Borrar toda la memoria de Itzel?",
+    "send_to_cloud": "¿Enviar datos al modelo en la nube? Esto sale de tu máquina.",
+    "run_code": "¿Ejecutar este código? Se usará el sandbox aislado.",
+    "install_skill": "¿Instalar la skill '{name}' de la comunidad?"
+  },
+
+  "shortcuts": {
+    "open_chat": "Abrir / cerrar chat",
+    "toggle_voice": "Activar / desactivar voz",
+    "open_window": "Ventana principal",
+    "screenshot": "Screenshot + preguntar",
+    "clipboard": "Explicar portapapeles",
+    "stop_agent": "Detener agente",
+    "new_line": "Nueva línea",
+    "prev_message": "Mensaje anterior",
+    "clear_chat": "Limpiar conversación",
+    "change_model": "Cambiar modelo",
+    "palette": "Command palette"
+  }
+}

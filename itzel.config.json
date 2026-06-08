@@ -1,0 +1,52 @@
+{
+  "version": "0.1.0",
+  "language": "es-MX",
+
+  "model": {
+    "active": "itzel-1b",
+    "context_length": 32768,
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "max_tokens": 2048
+  },
+
+  "voice": {
+    "enabled": true,
+    "stt_model": "whisper-small",
+    "tts_model": "kokoro",
+    "language": "es-MX"
+  },
+
+  "security": {
+    "sandbox_enabled": true,
+    "sandbox_cpu_limit": 0.5,
+    "sandbox_ram_mb": 512,
+    "sandbox_timeout_s": 30,
+    "confirm_irreversible": true
+  },
+
+  "server": {
+    "host": "127.0.0.1",
+    "port": 7432,
+    "dashboard_port": 7433,
+    "workers": 1
+  },
+
+  "rate_limit": {
+    "model_rps": 10,
+    "voice_rps": 5,
+    "web_rps": 2
+  },
+
+  "shortcuts": {
+    "open_chat": "Ctrl+Space",
+    "toggle_voice": "Ctrl+Shift+V",
+    "open_window": "Ctrl+Shift+I",
+    "screenshot": "Ctrl+Shift+S",
+    "clipboard": "Ctrl+Shift+C",
+    "stop_agent": "Ctrl+Shift+Escape"
+  },
+
+  "telemetry": false,
+  "analytics": false
+}

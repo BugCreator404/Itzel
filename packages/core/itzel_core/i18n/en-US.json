@@ -1,0 +1,70 @@
+{
+  "lang": "en-US",
+  "name": "English (US)",
+
+  "app": {
+    "name": "Itzel",
+    "tagline": "Your local, open source personal AI",
+    "version": "Version"
+  },
+
+  "greetings": {
+    "morning": "Good morning! I'm Itzel 🦎",
+    "afternoon": "Good afternoon! How can I help?",
+    "evening": "Good evening! I'm here.",
+    "generic": "Hi! I'm Itzel, your personal AI."
+  },
+
+  "mascot": {
+    "idle": "...",
+    "work": "Working...",
+    "think": "Hmm… let me think",
+    "happy": "Yay! ✨",
+    "wave": "Hellooo! 👋",
+    "sleep": "Zzz..."
+  },
+
+  "cli": {
+    "setup_welcome": "Welcome to Itzel Setup 🦎",
+    "setup_desc": "Let's configure your personal AI.",
+    "backend_offline": "Backend not available — run `itzel setup` first.",
+    "voice_unavailable": "Voice not available — run `itzel setup` first.",
+    "model_not_found": "Model {name} not found locally.",
+    "confirm_action": "Are you sure?",
+    "cancelled": "Operation cancelled.",
+    "success": "✓ Done.",
+    "error": "✗ Error: {message}"
+  },
+
+  "errors": {
+    "model_not_loaded": "Model not loaded. Run `itzel setup`.",
+    "voice_not_loaded": "Voice system not initialized.",
+    "backend_unreachable": "Cannot connect to backend at {url}.",
+    "config_not_found": "Configuration file not found.",
+    "permission_denied": "Permission denied for: {action}.",
+    "action_cancelled": "Action cancelled by user.",
+    "unknown": "Unknown error. Check logs at ~/.itzel/logs/"
+  },
+
+  "confirmations": {
+    "delete_file": "Delete '{path}'? This action cannot be undone.",
+    "clear_memory": "Clear all of Itzel's memory?",
+    "send_to_cloud": "Send data to a cloud model? This leaves your machine.",
+    "run_code": "Run this code? It will use the isolated sandbox.",
+    "install_skill": "Install community skill '{name}'?"
+  },
+
+  "shortcuts": {
+    "open_chat": "Open / close chat",
+    "toggle_voice": "Toggle voice",
+    "open_window": "Main window",
+    "screenshot": "Screenshot + ask",
+    "clipboard": "Explain clipboard",
+    "stop_agent": "Stop agent",
+    "new_line": "New line",
+    "prev_message": "Previous message",
+    "clear_chat": "Clear conversation",
+    "change_model": "Change model",
+    "palette": "Command palette"
+  }
+}

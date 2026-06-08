@@ -1,0 +1,13 @@
+# Normalizar line endings en el repo
+* text=auto eol=lf
+
+# Binarios — no tocar
+*.png binary
+*.ico binary
+*.icns binary
+*.gguf binary
+*.bin binary
+*.so binary
+*.dylib binary
+*.dll binary
+*.exe binary

@@ -1,0 +1,79 @@
+:root {
+  --bg: #09080f;
+  --bg2: #110f1c;
+  --t: #e8e4f4;
+  --t2: #9890b8;
+  --pink: #f9a8d4;
+  --lilac: #c4b5fd;
+  --teal: #4ecdc4;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--t);
+  font-family: "Syne", system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.itzel-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.itzel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #ffffff10;
+  background: var(--bg2);
+}
+
+.itzel-logo {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.9rem;
+  background: linear-gradient(160deg, #ffd9ec, var(--pink) 40%, var(--lilac));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.itzel-version {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--t2);
+}
+
+.itzel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+button {
+  background: #f9a8d418;
+  border: 1px solid #f9a8d440;
+  color: var(--pink);
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  font-family: "Syne", sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #f9a8d430;
+}

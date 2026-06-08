@@ -1,0 +1,84 @@
+# ─── Node / pnpm ────────────────────────────────────────────────
+node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+.turbo/
+
+# ─── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.so
+*.dylib
+
+# ─── Rust / Tauri ────────────────────────────────────────────────
+target/
+Cargo.lock          # solo para binarios finales; libs lo rastrean
+*.pdb
+
+# ─── Modelos e IA ────────────────────────────────────────────────
+models/itzel-1b/*.gguf
+models/itzel-1b/*.bin
+models/itzel-7b/
+*.gguf
+*.safetensors
+*.pt
+*.ckpt
+!models/itzel-1b/.gitkeep
+
+# ─── BD y datos locales ──────────────────────────────────────────
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+chroma/
+
+# ─── Secrets / credenciales ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials.json
+
+# ─── OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# ─── IDEs ────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.vim/
+
+# ─── Logs y temporales ──────────────────────────────────────────
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# ─── Tauri bundles (generados) ───────────────────────────────────
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/WixTools/
+
+# ─── Builds de distribución ──────────────────────────────────────
+release/
+bundles/
