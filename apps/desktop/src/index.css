@@ -229,3 +229,116 @@ body {
 .messages::-webkit-scrollbar       { width: 4px; }
 .messages::-webkit-scrollbar-track { background: transparent; }
 .messages::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
+
+/* ─── Mascota ────────────────────────────────────────────────── */
+.mascota-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  user-select: none;
+}
+
+/* Bubble de diálogo */
+.mascota-bubble {
+  position: relative;
+  max-width: 260px;
+  padding: 9px 14px;
+  background: #fff7fc;
+  color: #3a2240;
+  font-weight: 800;
+  font-size: 14px;
+  border-radius: 14px;
+  box-shadow: 0 5px 0 rgba(167,139,250,.22), 0 12px 28px -10px rgba(0,0,0,.55);
+  text-align: center;
+  line-height: 1.35;
+  pointer-events: none;
+  /* oculto por defecto */
+  opacity: 0;
+  transform: translateY(6px) scale(.96);
+  transition: opacity .22s, transform .22s;
+  margin-bottom: 6px;
+  min-height: 40px;
+}
+.mascota-bubble--show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+/* triángulo hacia abajo apuntando al sprite */
+.mascota-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 10px solid #fff7fc;
+}
+.mascota-dots {
+  display: inline-block;
+  min-width: 1.2em;
+  text-align: left;
+}
+
+/* Stage: contiene sprite + fx */
+.mascota-stage {
+  position: relative;
+  cursor: pointer;
+}
+
+/* Glow de fondo */
+.mascota-glow {
+  position: absolute;
+  inset: 4%;
+  z-index: 0;
+  background: radial-gradient(
+    48% 44% at 50% 50%,
+    rgba(249,168,212,.28),
+    rgba(196,181,253,.12) 46%,
+    transparent 70%
+  );
+  filter: blur(6px);
+  animation: mascota-glow-pulse 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes mascota-glow-pulse {
+  0%, 100% { opacity: .8; transform: scale(1);    }
+  50%       { opacity: 1;  transform: scale(1.05); }
+}
+
+/* Sombra proyectada */
+.mascota-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  width: 36%;
+  height: 5%;
+  z-index: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0,0,0,.45), transparent);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* Canvas sprite: ocupa todo el stage con image-rendering pixelated */
+.mascota-sprite {
+  position: relative;
+  z-index: 2;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges; /* Firefox */
+  -webkit-user-drag: none;
+}
+
+/* Canvas FX: overlay absoluto sobre el sprite */
+.mascota-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}

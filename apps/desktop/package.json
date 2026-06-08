@@ -22,7 +22,8 @@
     "@tauri-apps/plugin-shell": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "uuid": "^11.0.0"
+    "uuid": "^11.0.0",
+    "@itzel/mascota": "workspace:*"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

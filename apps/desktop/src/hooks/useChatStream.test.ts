@@ -111,8 +111,6 @@ describe("useChatStream", () => {
 
   it("reset limpia buffer, error y genera nueva sessionId", async () => {
     const { result } = renderHook(() => useChatStream());
-    const initialSession = result.current.sessionId;
-
     // Forzar un estado sucio
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(makeSseStream(["data: [ERROR:test]\n\n"]), { status: 200 })

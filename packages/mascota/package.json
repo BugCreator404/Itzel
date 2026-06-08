@@ -1,0 +1,26 @@
+{
+  "name": "@itzel/mascota",
+  "version": "0.1.0",
+  "description": "Motor de sprite pixel art del ajolote Itzel — puro TypeScript, sin dependencias de framework",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.8",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  },
+  "keywords": ["itzel", "mascota", "pixel-art", "ajolote", "canvas"],
+  "license": "MIT"
+}

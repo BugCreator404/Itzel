@@ -17,6 +17,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@itzel/mascota':
+        specifier: workspace:*
+        version: link:../../packages/mascota
       '@tauri-apps/api':
         specifier: ^2.0.0
         version: 2.11.0
@@ -81,6 +84,21 @@ importers:
       vite:
         specifier: ^5.4.2
         version: 5.4.21
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(jsdom@29.1.1)
+
+  packages/mascota:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.8
+        version: 4.1.8(vitest@2.1.9(jsdom@29.1.1))
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(jsdom@29.1.1)
