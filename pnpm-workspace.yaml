@@ -2,3 +2,11 @@ packages:
   - "apps/desktop"
   - "apps/cli/frontend"
   - "packages/mascota"
+
+allowBuilds:
+  esbuild: set this to true or false
+
+# Aprobar scripts de build para dependencias nativas
+onlyBuiltDependencies:
+  - esbuild
+  - "@tauri-apps/cli"

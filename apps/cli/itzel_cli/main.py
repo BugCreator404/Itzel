@@ -30,7 +30,7 @@ app.add_typer(memory.app, name="memory")
 app.add_typer(mcp.app, name="mcp")
 
 
-@app.command()
+@app.command(name="ask")
 def ask_cmd(
     question: str = typer.Argument(..., help="Pregunta para Itzel"),
     json_output: bool = typer.Option(False, "--json", help="Output en JSON"),
@@ -41,7 +41,7 @@ def ask_cmd(
     ask.run(question=question, json_output=json_output, quiet=quiet, model_name=model_name)
 
 
-@app.command()
+@app.command(name="run")
 def run_cmd(
     task: str = typer.Argument(..., help="Tarea a ejecutar con un agente"),
     json_output: bool = typer.Option(False, "--json", help="Output en JSON"),
@@ -51,7 +51,7 @@ def run_cmd(
     run.run(task=task, json_output=json_output, auto_confirm=yes)
 
 
-@app.command()
+@app.command(name="chat")
 def chat_cmd(
     context: Optional[str] = typer.Option(None, "--context", "-c", help="Ruta de contexto"),
     model_name: Optional[str] = typer.Option(None, "--model", "-m", help="Modelo a usar"),
@@ -60,7 +60,7 @@ def chat_cmd(
     chat.run(context=context, model_name=model_name)
 
 
-@app.command()
+@app.command(name="voice")
 def voice_cmd(
     stt: str = typer.Option("whisper-small", "--stt", help="Modelo STT a usar"),
     tts: str = typer.Option("kokoro", "--tts", help="Motor TTS a usar"),
@@ -69,14 +69,14 @@ def voice_cmd(
     voice.run(stt=stt, tts=tts)
 
 
-@app.command()
+@app.command(name="setup")
 def setup_cmd() -> None:
     """Configuración inicial interactiva: descarga modelo, configura voz y entorno."""
     from .commands import setup
     setup.run()
 
 
-@app.command()
+@app.command(name="status")
 def status_cmd(
     json_output: bool = typer.Option(False, "--json", help="Output en JSON"),
 ) -> None:
@@ -84,7 +84,7 @@ def status_cmd(
     status.run(json_output=json_output)
 
 
-@app.command()
+@app.command(name="update")
 def update_cmd(
     channel: str = typer.Option("stable", "--channel", help="Canal: stable | beta | nightly"),
 ) -> None:
@@ -92,7 +92,7 @@ def update_cmd(
     update.run(channel=channel)
 
 
-@app.command()
+@app.command(name="pipe")
 def pipe_cmd(
     prompt: str = typer.Argument(..., help="Instrucción sobre el contenido de stdin"),
     json_output: bool = typer.Option(False, "--json"),

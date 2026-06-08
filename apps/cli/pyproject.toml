@@ -1,13 +1,13 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "itzel-cli"
 version = "0.1.0"
 description = "Itzel CLI — IA personal local desde la terminal"
 readme = "README.md"
-license = { file = "../../LICENSE" }
+license = { text = "MIT" }
 authors = [
   { name = "Edwin Yair Hernández Limón", email = "edwinyhl.dev@gmail.com" },
 ]
