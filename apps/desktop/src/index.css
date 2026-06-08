@@ -342,3 +342,269 @@ body {
   width: 100%;
   height: 100%;
 }
+
+/* ─── ChatFloat ──────────────────────────────────────────────── */
+
+/* Contenedor raíz: ocupa todo el webview, fondo translúcido */
+.chatfloat {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 7, 24, 0.82);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  overflow: hidden;
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 24px 60px -10px rgba(0,0,0,.7), 0 0 0 1px rgba(249,168,212,.06);
+}
+
+/* Barra de arrastre */
+.chatfloat-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--b);
+  cursor: move; /* indica que es arrastrable */
+}
+
+.chatfloat-logo {
+  font-family: "Press Start 2P", monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  background: linear-gradient(180deg, #ffd9ec 0%, var(--pink) 50%, var(--lilac) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  user-select: none;
+}
+
+.chatfloat-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chatfloat-close {
+  width: 22px;
+  height: 22px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--b2);
+  border-radius: 6px;
+  color: var(--t2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+}
+.chatfloat-close:hover { background: rgba(251,113,133,.18); color: var(--red); }
+
+/* Mascota: posición absoluta sobre el área de mensajes */
+.chatfloat-mascota {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: .92;
+}
+
+/* Error banner compacto */
+.chatfloat-error {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: rgba(251,113,133,.15);
+  border-bottom: 1px solid rgba(251,113,133,.3);
+  font-size: 12px;
+  color: var(--red);
+}
+
+/* Área de mensajes */
+.chatfloat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+.chatfloat-messages::-webkit-scrollbar       { width: 3px; }
+.chatfloat-messages::-webkit-scrollbar-track { background: transparent; }
+.chatfloat-messages::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
+
+.chatfloat-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--t2);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  padding-bottom: 60px; /* espacio para la mascota */
+}
+.chatfloat-empty-sub { font-size: 12px; font-weight: 400; color: var(--t3); }
+
+/* Footer del chat */
+.chatfloat-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--b);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ─── CommandPalette ─────────────────────────────────────────── */
+
+.cmd-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 48px;
+  backdrop-filter: blur(2px);
+}
+
+.cmd-palette {
+  width: 92%;
+  max-height: calc(100% - 80px);
+  background: rgba(26, 14, 38, 0.97);
+  border: 1px solid rgba(196,181,253,.18);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px -8px rgba(0,0,0,.8), 0 0 0 1px rgba(249,168,212,.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cmd-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--b);
+}
+
+.cmd-search-icon {
+  font-size: 13px;
+  color: var(--t3);
+  flex-shrink: 0;
+}
+
+.cmd-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--t);
+  font-size: 14px;
+  font-family: inherit;
+}
+.cmd-input::placeholder { color: var(--t3); }
+
+.cmd-clear {
+  background: transparent;
+  border: none;
+  color: var(--t3);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+.cmd-clear:hover { color: var(--t2); }
+
+.cmd-list {
+  list-style: none;
+  overflow-y: auto;
+  max-height: 280px;
+  padding: 6px 0;
+}
+.cmd-list::-webkit-scrollbar       { width: 3px; }
+.cmd-list::-webkit-scrollbar-track { background: transparent; }
+.cmd-list::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
+
+.cmd-empty {
+  padding: 16px 14px;
+  color: var(--t3);
+  font-size: 13px;
+  text-align: center;
+}
+
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.cmd-item:hover,
+.cmd-item--active {
+  background: rgba(196,181,253,.10);
+}
+
+.cmd-item-icon {
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.cmd-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cmd-item-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--t);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmd-item-desc {
+  font-size: 11.5px;
+  color: var(--t3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmd-footer {
+  display: flex;
+  gap: 14px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--b);
+  font-size: 11px;
+  color: var(--t3);
+}
+
+.cmd-footer kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--b);
+  border: 1px solid var(--b2);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--t2);
+  margin-right: 3px;
+}
