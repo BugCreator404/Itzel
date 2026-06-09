@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "itzel-voice"
+version = "0.1.0"
+description = "Pipeline de voz para Itzel — STT + VAD + captura de audio, 100% local"
+authors = [
+  { name = "Edwin Yair Hernández Limón", email = "edwinyhl.dev@gmail.com" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11"
+
+# Dependencias mínimas (sin modelos pesados opcionales)
+dependencies = [
+  "numpy>=1.24.0",
+  "soundfile>=0.12.1",
+]
+
+[project.optional-dependencies]
+# Instalación completa con captura de micrófono y modelos locales
+full = [
+  "sounddevice>=0.4.7",
+  "silero-vad>=5.1.0",
+  "onnxruntime>=1.18.0",
+  "faster-whisper>=1.0.3",
+  "cffi>=1.16.0",
+]
+
+# Solo para desarrollo y testing
+dev = [
+  "pytest>=8.2.0",
+  "pytest-asyncio>=0.23.7",
+  "numpy>=1.24.0",
+  "soundfile>=0.12.1",
+]
+
+[project.urls]
+Homepage   = "https://github.com/BugCreator404/itzel"
+Repository = "https://github.com/BugCreator404/itzel"
+
+# ─── setuptools ───────────────────────────────────────────────────────────────
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["itzel_voice*"]
+
+# ─── pytest ───────────────────────────────────────────────────────────────────
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+asyncio_mode = "auto"
+
+# ─── ruff (linter) ────────────────────────────────────────────────────────────
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]

@@ -1,0 +1,52 @@
+# ─── itzel-voice — dependencias de producción ────────────────────────────────
+#
+# Instalar con:
+#   pip install -r packages/voice/requirements.txt
+#
+# Para instalación en modo desarrollo (editable):
+#   pip install -e packages/voice/
+#
+# NOTA: todas las inferencias ocurren 100% en local.
+# Ningún byte de audio sale de la máquina del usuario.
+
+# ── Captura de audio ──────────────────────────────────────────────────────────
+# sounddevice: wrapper Python para PortAudio (multiplataforma)
+# Soporta Windows WASAPI, macOS CoreAudio, Linux ALSA/PulseAudio
+sounddevice>=0.4.7
+
+# ── Procesamiento numérico de audio ──────────────────────────────────────────
+numpy>=1.24.0
+
+# ── VAD — Voice Activity Detection ───────────────────────────────────────────
+# silero-vad v5+: modelo ONNX de detección de voz (~2 MB)
+# Docs: https://github.com/snakers4/silero-vad
+silero-vad>=5.1.0
+
+# onnxruntime: backend ONNX sin PyTorch (~12 MB)
+# silero-vad lo usa si está disponible (load_silero_vad(onnx=True))
+onnxruntime>=1.18.0
+
+# ── STT — Speech-to-Text ─────────────────────────────────────────────────────
+# faster-whisper: reimplementación de Whisper con CTranslate2
+# ~4x más rápido que el original, modelo "small" ~460 MB
+# Docs: https://github.com/SYSTRAN/faster-whisper
+faster-whisper>=1.0.3
+
+# ── Utilidades de audio ───────────────────────────────────────────────────────
+# soundfile: lectura/escritura de .wav/.flac para tests y export
+soundfile>=0.12.1
+
+# ── Utilidades opcionales ─────────────────────────────────────────────────────
+# cffi: requerido por sounddevice en algunas plataformas
+cffi>=1.16.0
+
+# ─── Nota sobre PyTorch ───────────────────────────────────────────────────────
+# silero-vad puede funcionar solo con onnxruntime (sin torch).
+# Si el usuario ya tiene torch instalado, silero-vad lo detecta
+# automáticamente. Para forzar ONNX:
+#
+#   from silero_vad import load_silero_vad
+#   model = load_silero_vad(onnx=True)  # ignora torch aunque esté instalado
+#
+# Para instalar torch CPU-only si se necesita:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
