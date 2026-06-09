@@ -59,6 +59,7 @@ class PipelineState(Enum):
     IDLE       = auto()   # escuchando, sin voz detectada
     LISTENING  = auto()   # VAD detectó voz, acumulando audio
     PROCESSING = auto()   # Whisper transcribiendo
+    SPEAKING   = auto()   # TTS reproduciendo respuesta
 
 
 # ─── configuración ────────────────────────────────────────────────────────────
@@ -84,23 +85,38 @@ class VoicePipeline:
         on_transcript(text, language)   → texto reconocido + idioma ("es"/"en")
         on_listening_start()            → VAD detectó inicio de voz
         on_listening_end()              → VAD detectó fin de voz
-        on_level(rms)                   → nivel de volumen (0.0-1.0)
+        on_level(rms)                   → nivel de volumen del mic (0.0-1.0)
         on_error(exc)                   → error en el pipeline
         on_state_change(state_str)      → cambio de estado para la UI
+        on_speaking_start()             → TTS comenzó a reproducir
+        on_speaking_end()               → TTS terminó de reproducir
+        on_speaking_level(rms)          → nivel de volumen del TTS (animación)
+        on_interrupted()                → TTS fue interrumpido por el usuario
+
+    TTS (opcional):
+        pipeline.tts = TextToSpeech()   → asignar antes de start()
+        Si tts es None, el pipeline funciona en modo solo-texto (sin voz de salida).
     """
 
     def __init__(self, config: Optional[PipelineConfig] = None) -> None:
         self.config = config or PipelineConfig()
         self.vad    = VoiceActivityDetector(self.config.vad)
         self.stt    = SpeechToText(self.config.stt)
+        self.tts    = None   # TextToSpeech | PiperTextToSpeech — opcional
 
-        # Callbacks públicos
+        # Callbacks públicos — voz de entrada
         self.on_transcript:    Optional[Callable[[str, str], None]]  = None
         self.on_listening_start: Optional[Callable[[], None]]        = None
         self.on_listening_end:   Optional[Callable[[], None]]        = None
         self.on_level:           Optional[Callable[[float], None]]   = None
         self.on_error:           Optional[Callable[[Exception], None]]= None
         self.on_state_change:    Optional[Callable[[str], None]]     = None
+
+        # Callbacks públicos — voz de salida (TTS)
+        self.on_speaking_start: Optional[Callable[[], None]]        = None
+        self.on_speaking_end:   Optional[Callable[[], None]]        = None
+        self.on_speaking_level: Optional[Callable[[float], None]]   = None
+        self.on_interrupted:    Optional[Callable[[], None]]        = None
 
         # Estado interno
         self._state    = PipelineState.STOPPED
@@ -161,6 +177,10 @@ class VoicePipeline:
         self.vad.on_speech_end   = self._on_vad_speech_end
         self.vad.on_level_change = self._on_level
 
+        # Conectar callbacks de TTS si hay motor configurado
+        if self.tts is not None:
+            self._setup_tts_callbacks()
+
         self._running = True
         self._set_state(PipelineState.IDLE)
 
@@ -191,6 +211,10 @@ class VoicePipeline:
         """
         if not self._running:
             return
+
+        # Interrumpir TTS antes de cerrar el stream de audio
+        if self.tts is not None and self._state is PipelineState.SPEAKING:
+            self.tts.stop()
 
         self._running = False
 
@@ -276,13 +300,50 @@ class VoicePipeline:
 
     @property
     def state(self) -> str:
-        """Estado actual: 'stopped' | 'idle' | 'listening' | 'processing'."""
+        """Estado actual: 'stopped' | 'idle' | 'listening' | 'processing' | 'speaking'."""
         return self._state.name.lower()
+
+    # ── configuración del TTS ─────────────────────────────────────────────────
+
+    def _setup_tts_callbacks(self) -> None:
+        """Conecta los callbacks internos del TTS al pipeline."""
+        self.tts.on_start       = self._on_tts_start
+        self.tts.on_end         = self._on_tts_end
+        self.tts.on_level       = self._on_tts_level
+        self.tts.on_interrupted = self._on_tts_interrupted
+
+    def _on_tts_start(self) -> None:
+        """TTS comenzó a reproducir — pasar a estado SPEAKING."""
+        self._set_state(PipelineState.SPEAKING)
+        if self.on_speaking_start:
+            self.on_speaking_start()
+
+    def _on_tts_end(self) -> None:
+        """TTS terminó de reproducir — volver a IDLE solo si nadie cambió el estado."""
+        if self._state is PipelineState.SPEAKING:
+            self._set_state(PipelineState.IDLE)
+        if self.on_speaking_end:
+            self.on_speaking_end()
+
+    def _on_tts_level(self, rms: float) -> None:
+        """Nivel de volumen del TTS para animación de la mascota."""
+        if self.on_speaking_level:
+            self.on_speaking_level(rms)
+
+    def _on_tts_interrupted(self) -> None:
+        """TTS fue interrumpido (por voz del usuario o stop())."""
+        if self.on_interrupted:
+            threading.Thread(
+                target=self.on_interrupted, daemon=True
+            ).start()
 
     # ── callbacks internos del VAD ────────────────────────────────────────────
 
     def _on_vad_speech_start(self) -> None:
-        """VAD detectó inicio de voz."""
+        """VAD detectó inicio de voz. Si Itzel estaba hablando, la interrumpe."""
+        if self.tts is not None and self._state is PipelineState.SPEAKING:
+            self.tts.stop()
+
         self._set_state(PipelineState.LISTENING)
         if self.on_listening_start:
             self.on_listening_start()
@@ -377,8 +438,19 @@ class VoicePipeline:
             # Transcribir
             try:
                 result = self.stt.transcribe(audio)
-                if result.text and self.on_transcript:
-                    self.on_transcript(result.text, result.language)
+                if result.text:
+                    if self.on_transcript:
+                        self.on_transcript(result.text, result.language)
+
+                    # TTS: Itzel responde en voz — bloqueante en este hilo.
+                    # El guard _state PROCESSING→IDLE en finally NO ejecuta
+                    # porque _on_tts_start lo cambia a SPEAKING antes de retornar.
+                    if self.tts is not None:
+                        try:
+                            self.tts.speak(result.text)
+                        except Exception as exc:
+                            log.error("Error en TTS al hablar: %s", exc)
+
                 log.debug(
                     "Transcripción [%s, %.1fs]: %s",
                     result.language, result.duration_s, result.text[:60],
@@ -391,6 +463,8 @@ class VoicePipeline:
                     ).start()
             finally:
                 self._speech_queue.task_done()
+                # Solo volver a IDLE si nadie más cambió el estado
+                # (p.ej. TTS ya lo llevó a SPEAKING→IDLE, o VAD lo llevó a LISTENING)
                 if self._state is PipelineState.PROCESSING:
                     self._set_state(PipelineState.IDLE)
 

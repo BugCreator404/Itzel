@@ -1,6 +1,6 @@
 """Comando: itzel voice
 
-Sesión de voz en tiempo real — 100% local, sin servidores externos.
+Sesión de voz bidireccional en tiempo real — 100% local, sin servidores externos.
 
 Modos:
   always  — escucha continua con VAD (Silero); el modelo detecta cuándo hablas
@@ -8,6 +8,7 @@ Modos:
 
 STT:  faster-whisper (CTranslate2, int8, ~4× más rápido que Whisper original)
 VAD:  Silero VAD con backend ONNX (~12 MB, sin PyTorch)
+TTS:  Kokoro-82M ONNX (ES-MX femenino) — responde en voz cuando pipeline.tts está configurado
 
 Archivos descargados en ~/.itzel/models/whisper/<tamaño>/
 """
@@ -38,6 +39,7 @@ from ..output import (
 _ST_IDLE       = "[dim #9890b8]● escuchando[/]"
 _ST_LISTEN     = "[bold #f87171]◉ grabando[/]"
 _ST_PROCESS    = "[bold #fbbf24]◌ procesando[/]"
+_ST_SPEAKING   = "[bold #a78bfa]◎ itzel habla[/]"
 _ST_STOPPED    = "[dim]■ detenido[/]"
 
 _ITZEL_LABEL   = "[bold #9890b8]itzel[/]"
@@ -176,7 +178,7 @@ def run(
     pipeline.on_transcript = _on_transcript
 
     pipeline.on_state_change = lambda s: (
-        None if s == "listening" else
+        None if s in ("listening", "speaking") else
         console.print(_ST_IDLE, end="\r") if s == "idle" else None
     )
 
@@ -185,6 +187,28 @@ def run(
         warn(f"Error en el pipeline: {exc}")
 
     pipeline.on_error = _on_error
+
+    pipeline.on_speaking_start = lambda: (
+        _set_state("speaking"),
+        console.print(f"\r{' ' * 30}\r", end=""),
+        console.print(f"{_ST_SPEAKING}", end="\r"),
+    )
+
+    pipeline.on_speaking_end = lambda: (
+        _set_state("idle"),
+        console.print(f"\r{' ' * 30}\r", end=""),
+        console.print(_ST_IDLE, end="\r"),
+    )
+
+    def _on_interrupted() -> None:
+        _set_state("idle")
+        console.print(f"\r{' ' * 30}\r", end="")
+        console.print(
+            f"{_ITZEL_LABEL}: [dim #9890b8][interrupción][/]"
+        )
+        console.print(_ST_IDLE, end="\r")
+
+    pipeline.on_interrupted = _on_interrupted
 
     # ── Cargar VAD e iniciar ──────────────────────────────────────────────────
     try:

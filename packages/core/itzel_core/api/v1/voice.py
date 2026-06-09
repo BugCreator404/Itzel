@@ -9,6 +9,8 @@ Protocolo cliente → servidor:
                  (chunks de cualquier tamaño; el VAD los procesa a 512 muestras)
   JSON text    :
     {"type": "config",    "mode": "always|hotkey",  "language": "es"}
+    {"type": "set_tts",   "enabled": true}           activa TTS Kokoro (carga async)
+    {"type": "set_tts",   "enabled": false}           desactiva TTS
     {"type": "ptt_start"}
     {"type": "ptt_stop"}
     {"type": "force_end"}
@@ -16,15 +18,20 @@ Protocolo cliente → servidor:
     {"type": "stop"}
 
 Protocolo servidor → cliente (JSON text):
-  {"type": "ready",          "session_id": "...",                   "ts": 1234.5}
-  {"type": "transcript",     "text": "...",  "language": "es",      "ts": 1234.5}
-  {"type": "listening_start",                                        "ts": 1234.5}
-  {"type": "listening_end",                                          "ts": 1234.5}
-  {"type": "state",          "state": "idle|listening|processing",  "ts": 1234.5}
-  {"type": "level",          "rms": 0.31,                           "ts": 1234.5}
-  {"type": "error",          "detail": "...",                       "ts": 1234.5}
-  {"type": "pong",           "id": "<echo>",                        "ts": 1234.5}
-  {"type": "configured",                                             "ts": 1234.5}
+  {"type": "ready",           "session_id": "...",                        "ts": 1234.5}
+  {"type": "transcript",      "text": "...",  "language": "es",           "ts": 1234.5}
+  {"type": "listening_start",                                              "ts": 1234.5}
+  {"type": "listening_end",                                                "ts": 1234.5}
+  {"type": "state",           "state": "idle|listening|processing|speaking","ts": 1234.5}
+  {"type": "level",           "rms": 0.31,                                "ts": 1234.5}
+  {"type": "speaking_start",                                               "ts": 1234.5}
+  {"type": "speaking_end",                                                 "ts": 1234.5}
+  {"type": "speaking_level",  "rms": 0.45,                                "ts": 1234.5}
+  {"type": "interrupted",                                                  "ts": 1234.5}
+  {"type": "tts_ready",                                                    "ts": 1234.5}
+  {"type": "error",           "detail": "...",                            "ts": 1234.5}
+  {"type": "pong",            "id": "<echo>",                             "ts": 1234.5}
+  {"type": "configured",                                                   "ts": 1234.5}
 """
 
 from __future__ import annotations
@@ -32,6 +39,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import threading
 import time
 from uuid import uuid4
 
@@ -77,6 +85,7 @@ async def _handle_control(
     pipeline,
     ws:         WebSocket,
     session_id: str,
+    send,
 ) -> None:
     """Procesa un mensaje de control JSON enviado por el cliente."""
     msg_type = msg.get("type", "")
@@ -122,6 +131,37 @@ async def _handle_control(
                 "ts":     _ts(),
             }))
 
+    elif msg_type == "set_tts":
+        enabled = msg.get("enabled", True)
+        if not enabled:
+            if pipeline.tts is not None:
+                pipeline.tts.stop()
+                pipeline.tts = None
+            await ws.send_text(json.dumps({
+                "type": "configured", "tts": False, "ts": _ts(),
+            }))
+        else:
+            # Cargar TTS en background — puede tardar ~2s la primera vez
+            def _load_tts() -> None:
+                try:
+                    from itzel_voice.tts import TextToSpeech, TTSConfig
+                    tts = TextToSpeech(TTSConfig())
+                    tts.load()
+                    pipeline.tts = tts
+                    pipeline._setup_tts_callbacks()
+                    send({"type": "tts_ready", "ts": _ts()})
+                except Exception as exc:
+                    send({
+                        "type":   "error",
+                        "detail": f"Error al cargar TTS: {exc}",
+                        "ts":     _ts(),
+                    })
+
+            threading.Thread(target=_load_tts, daemon=True).start()
+            await ws.send_text(json.dumps({
+                "type": "configured", "tts": "loading", "ts": _ts(),
+            }))
+
     elif msg_type == "stop":
         if pipeline.is_running:
             pipeline.stop()
@@ -164,8 +204,9 @@ async def voice_ws(ws: WebSocket) -> None:
         # Preparar sender thread-safe para los callbacks del pipeline
         _send = _make_sender(ws, loop)
 
-        # Throttle para eventos de nivel
-        _level_ts: list[float] = [0.0]
+        # Throttle para eventos de nivel de micrófono y TTS
+        _level_ts:          list[float] = [0.0]
+        _speaking_level_ts: list[float] = [0.0]
 
         def _on_level(rms: float) -> None:
             now = time.monotonic()
@@ -173,10 +214,16 @@ async def voice_ws(ws: WebSocket) -> None:
                 _level_ts[0] = now
                 _send({"type": "level", "rms": round(rms, 3), "ts": _ts()})
 
+        def _on_speaking_level(rms: float) -> None:
+            now = time.monotonic()
+            if now - _speaking_level_ts[0] >= _LEVEL_THROTTLE_S:
+                _speaking_level_ts[0] = now
+                _send({"type": "speaking_level", "rms": round(rms, 3), "ts": _ts()})
+
         # Crear y configurar pipeline
         pipeline = VoicePipeline(PipelineConfig(mode="always"))
 
-        pipeline.on_transcript    = lambda text, lang: _send({
+        pipeline.on_transcript      = lambda text, lang: _send({
             "type": "transcript", "text": text, "language": lang, "ts": _ts(),
         })
         pipeline.on_listening_start = lambda: _send({
@@ -192,6 +239,18 @@ async def voice_ws(ws: WebSocket) -> None:
             "type": "error", "detail": str(exc), "ts": _ts(),
         })
         pipeline.on_level           = _on_level
+
+        # Callbacks TTS (se activan cuando pipeline.tts está asignado)
+        pipeline.on_speaking_start  = lambda: _send({
+            "type": "speaking_start", "ts": _ts(),
+        })
+        pipeline.on_speaking_end    = lambda: _send({
+            "type": "speaking_end", "ts": _ts(),
+        })
+        pipeline.on_speaking_level  = _on_speaking_level
+        pipeline.on_interrupted     = lambda: _send({
+            "type": "interrupted", "ts": _ts(),
+        })
 
         # Arrancar sin micrófono: el audio llega como bytes del cliente
         pipeline.start(use_mic=False)
@@ -230,7 +289,7 @@ async def voice_ws(ws: WebSocket) -> None:
             elif raw_text:
                 try:
                     msg = json.loads(raw_text)
-                    await _handle_control(msg, pipeline, ws, session_id)
+                    await _handle_control(msg, pipeline, ws, session_id, _send)
                 except json.JSONDecodeError:
                     log.warning(
                         "Texto no-JSON en sesión %s: %.80s", session_id, raw_text

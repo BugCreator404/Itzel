@@ -5,15 +5,26 @@ Módulos:
     vad       — Voice Activity Detection (Silero VAD + ONNX)
     stt       — Speech-to-Text (faster-whisper, modelo "small")
     pipeline  — Orquestador: mic → VAD → Whisper → texto
+    tts       — Text-to-Speech (Kokoro-82M ONNX, ES-MX femenino)
+    tts_piper — TTS de respaldo (Piper TTS, voz es_MX-claude-high)
 
-Uso rápido:
+Uso rápido (STT):
     from itzel_voice import VoicePipeline, PipelineConfig
 
-    config = PipelineConfig(mode="always", language="es")
-    pipeline = VoicePipeline(config)
-    pipeline.on_transcript = lambda text: print(f"Dijiste: {text}")
+    pipeline = VoicePipeline(PipelineConfig(mode="always"))
+    pipeline.on_transcript = lambda text, lang: print(f"Dijiste: {text}")
+    pipeline.start()
+    input("Enter para detener...")
+    pipeline.stop()
 
-    pipeline.start()   # inicia captura de micrófono
+Uso bidireccional (STT + TTS):
+    from itzel_voice import VoicePipeline, PipelineConfig, TextToSpeech
+
+    pipeline = VoicePipeline(PipelineConfig(mode="always"))
+    pipeline.tts = TextToSpeech()
+    pipeline.tts.load()
+    pipeline.on_transcript = lambda text, lang: print(f"Dijiste: {text}")
+    pipeline.start()
     input("Enter para detener...")
     pipeline.stop()
 
@@ -35,6 +46,10 @@ __all__ = [
     "STTConfig",
     "VoicePipeline",
     "PipelineConfig",
+    "TextToSpeech",
+    "TTSConfig",
+    "PiperTextToSpeech",
+    "SentenceBuffer",
     "VoiceNotAvailableError",
     "check_dependencies",
 ]
@@ -67,9 +82,11 @@ def _lazy_import(module_path: str, name: str):
 
 
 # Importaciones reales — se ejecutan al importar el paquete
-from .vad      import VoiceActivityDetector, VADConfig          # noqa: E402
-from .stt      import SpeechToText, STTConfig                   # noqa: E402
-from .pipeline import VoicePipeline, PipelineConfig             # noqa: E402
+from .vad       import VoiceActivityDetector, VADConfig          # noqa: E402
+from .stt       import SpeechToText, STTConfig                   # noqa: E402
+from .pipeline  import VoicePipeline, PipelineConfig             # noqa: E402
+from .tts       import TextToSpeech, TTSConfig, SentenceBuffer   # noqa: E402
+from .tts_piper import PiperTextToSpeech                         # noqa: E402
 
 
 # ─── verificación de dependencias ─────────────────────────────────────────────
@@ -92,6 +109,8 @@ def check_dependencies() -> dict[str, bool]:
         "silero_vad":     False,
         "onnxruntime":    False,
         "faster_whisper": False,
+        "kokoro":         False,   # TTS principal
+        "piper":          False,   # TTS de respaldo (piper-tts)
     }
     for dep in deps:
         try:

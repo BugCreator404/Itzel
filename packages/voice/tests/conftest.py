@@ -34,6 +34,8 @@ import pytest
 
 from itzel_voice.pipeline import PipelineConfig, VoicePipeline
 from itzel_voice.stt import STTConfig, SpeechToText
+from itzel_voice.tts import TTSConfig, TextToSpeech
+from itzel_voice.tts_piper import PiperTextToSpeech
 from itzel_voice.vad import CHUNK_SAMPLES, SAMPLE_RATE, VADConfig, VoiceActivityDetector
 
 # ─── constantes de test ───────────────────────────────────────────────────────
@@ -268,14 +270,52 @@ class _MockInputStream:
             self.callback(audio.reshape(-1, 1), len(audio), None, None)
 
 
+class _MockOutputStream:
+    """
+    Simula sd.OutputStream sin acceder a hardware de audio.
+
+    Registra lo que se escribe y si fue abortado — útil para assertions
+    en tests de TTS: ¿se escribió audio? ¿se interrumpió correctamente?
+    """
+    _last_instance: "_MockOutputStream | None" = None
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.written:  list[np.ndarray] = []
+        self.aborted:  bool             = False
+        self.started:  bool             = False
+        self.closed:   bool             = False
+        _MockOutputStream._last_instance = self
+
+    def start(self) -> None:
+        self.started = True
+
+    def write(self, data) -> None:
+        self.written.append(np.asarray(data).copy())
+
+    def abort(self) -> None:
+        self.aborted = True
+
+    def stop(self) -> None:
+        pass
+
+    def close(self) -> None:
+        self.closed = True
+
+    @property
+    def total_samples(self) -> int:
+        """Número total de samples escritos (para assertions de duración)."""
+        return sum(len(w) for w in self.written)
+
+
 @pytest.fixture
 def mock_sounddevice() -> types.ModuleType:
     """
     Módulo sounddevice completamente mockeado.
     Registra el mock en sys.modules para que pipeline.py lo importe.
     """
-    sd_mock              = types.ModuleType("sounddevice")
-    sd_mock.InputStream  = _MockInputStream
+    sd_mock               = types.ModuleType("sounddevice")
+    sd_mock.InputStream   = _MockInputStream
+    sd_mock.OutputStream  = _MockOutputStream   # para tests de TTS en el pipeline
     sd_mock.query_devices = MagicMock(return_value=[
         {
             "name": "Mock Microphone",
@@ -283,7 +323,7 @@ def mock_sounddevice() -> types.ModuleType:
             "default_samplerate": 16_000.0,
         }
     ])
-    sd_mock.default      = MagicMock()
+    sd_mock.default       = MagicMock()
     sd_mock.default.device = 0
     return sd_mock
 
@@ -336,6 +376,86 @@ def full_pipeline_hotkey(
     pipeline = VoicePipeline(config)
     pipeline.vad = loaded_vad
     pipeline.stt = loaded_stt
+
+    yield pipeline
+
+    if pipeline.is_running:
+        pipeline.stop()
+    sys.modules.pop("sounddevice", None)
+
+
+# ─── fixtures de TTS ──────────────────────────────────────────────────────────
+
+def _make_kokoro_gen():
+    """Generador que simula KPipeline: devuelve 100ms de audio silencioso."""
+    def _gen(text, voice="ef_dora", speed=1.0):
+        yield ("", "", np.zeros(int(24_000 * 0.1), dtype=np.float32))
+    m = MagicMock(name="KPipeline")
+    m.side_effect = _gen
+    return m
+
+
+@pytest.fixture
+def mock_tts() -> TextToSpeech:
+    """
+    TextToSpeech pre-cargado con modelo Kokoro mockeado.
+
+    No requiere kokoro instalado ni ~82 MB de modelo descargado.
+    sounddevice debe estar ya en sys.modules (usa mock_sounddevice).
+    """
+    tts         = TextToSpeech(TTSConfig())
+    tts._model  = _make_kokoro_gen()
+    tts._loaded = True
+    return tts
+
+
+@pytest.fixture
+def mock_piper_tts() -> PiperTextToSpeech:
+    """
+    PiperTextToSpeech pre-cargado con voz mockeada.
+
+    La voz mock devuelve 100ms de int16 zeros cuando se llama
+    synthesize_stream_raw(), reproduciendo la misma interfaz de Piper.
+    """
+    # Crear mock de PiperVoice
+    mock_voice = MagicMock(name="PiperVoice")
+    mock_voice.config.sample_rate = 22_050
+
+    # synthesize_stream_raw devuelve bytes de int16 (100ms @ 22050 Hz)
+    raw = np.zeros(int(22_050 * 0.1), dtype=np.int16).tobytes()
+    mock_voice.synthesize_stream_raw.return_value = iter([raw])
+
+    tts          = PiperTextToSpeech(TTSConfig(engine="piper", voice="es_MX-claude-high"))
+    tts._voice   = mock_voice
+    tts._sr      = 22_050
+    tts._loaded  = True
+    return tts
+
+
+# ─── pipeline completo con TTS ────────────────────────────────────────────────
+
+@pytest.fixture
+def full_pipeline_with_tts(
+    loaded_vad,
+    loaded_stt,
+    mock_tts,
+    mock_sounddevice,
+) -> Iterator[VoicePipeline]:
+    """
+    VoicePipeline con TTS activado — sin hardware real.
+
+    Extiende full_pipeline con un TextToSpeech mockeado asignado antes
+    de start(), de modo que _setup_tts_callbacks() se ejecuta en start().
+
+    Útil para tests de integración STT → TTS y de interrupción por voz.
+    """
+    sys.modules["sounddevice"] = mock_sounddevice
+
+    config   = PipelineConfig(mode="always")
+    pipeline = VoicePipeline(config)
+    pipeline.vad = loaded_vad
+    pipeline.stt = loaded_stt
+    pipeline.tts = mock_tts
 
     yield pipeline
 

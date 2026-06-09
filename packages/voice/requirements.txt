@@ -32,6 +32,22 @@ onnxruntime>=1.18.0
 # Docs: https://github.com/SYSTRAN/faster-whisper
 faster-whisper>=1.0.3
 
+# ── TTS — Text-to-Speech ─────────────────────────────────────────────────────
+# kokoro: TTS neuronal compacto 82M parámetros, backend ONNX, ES-MX femenino
+# Voz por defecto: ef_dora (~82 MB, descarga automática en primer uso)
+# Primera sílaba < 500ms en CPU; sin PyTorch
+# Docs: https://github.com/hexgrad/kokoro
+kokoro>=0.9.4
+
+# piper-tts: TTS ONNX de respaldo, voz es_MX-claude-high (~63 MB)
+# Solo onnxruntime, sin dependencias pesadas
+# Docs: https://github.com/rhasspy/piper
+piper-tts>=1.2.0
+
+# huggingface_hub: descarga automática de modelos Piper desde HF
+# (kokoro lo incluye transitivamente; declaramos explícito para Piper)
+huggingface_hub>=0.24.0
+
 # ── Utilidades de audio ───────────────────────────────────────────────────────
 # soundfile: lectura/escritura de .wav/.flac para tests y export
 soundfile>=0.12.1
@@ -42,6 +58,7 @@ cffi>=1.16.0
 
 # ─── Nota sobre PyTorch ───────────────────────────────────────────────────────
 # silero-vad puede funcionar solo con onnxruntime (sin torch).
+# Kokoro también usa onnxruntime exclusivamente — sin PyTorch.
 # Si el usuario ya tiene torch instalado, silero-vad lo detecta
 # automáticamente. Para forzar ONNX:
 #
