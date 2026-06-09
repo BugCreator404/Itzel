@@ -31,5 +31,5 @@ def test_status_json():
     assert result.exit_code == 0
     import json
     data = json.loads(result.output)
-    assert "version" in data
+    assert "cli_version" in data
     assert "backend" in data
