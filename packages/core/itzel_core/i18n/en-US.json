@@ -51,6 +51,9 @@
     "clear_memory": "Clear all of Itzel's memory?",
     "send_to_cloud": "Send data to a cloud model? This leaves your machine.",
     "run_code": "Run this code? It will use the isolated sandbox.",
+    "run_python": "Run this Python code in the isolated sandbox?",
+    "run_bash": "Run this shell command in the isolated sandbox?",
+    "close_app": "Close '{name}'? You may lose unsaved work.",
     "install_skill": "Install community skill '{name}'?"
   },
 

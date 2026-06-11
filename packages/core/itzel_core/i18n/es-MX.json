@@ -51,6 +51,9 @@
     "clear_memory": "¿Borrar toda la memoria de Itzel?",
     "send_to_cloud": "¿Enviar datos al modelo en la nube? Esto sale de tu máquina.",
     "run_code": "¿Ejecutar este código? Se usará el sandbox aislado.",
+    "run_python": "¿Ejecutar este código Python en el sandbox aislado?",
+    "run_bash": "¿Ejecutar este comando de shell en el sandbox aislado?",
+    "close_app": "¿Cerrar '{name}'? Podrías perder trabajo no guardado.",
     "install_skill": "¿Instalar la skill '{name}' de la comunidad?"
   },
 

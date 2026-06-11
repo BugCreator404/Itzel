@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "itzel-agents"
+version = "0.1.0"
+description = "Agentes de Itzel — File, System, Code y Document, 100% local con confirmación y sandbox"
+authors = [
+  { name = "Edwin Yair Hernández Limón", email = "edwinyhl.dev@gmail.com" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11"
+
+# Dependencias mínimas — los agentes File, System y Code funcionan sin extras.
+# itzel-core aporta el tool system (tools/), config y logging.
+dependencies = [
+  "itzel-core",
+  "psutil>=5.9.0",       # get_system_info: RAM, CPU, disco
+  "pyperclip>=1.8.2",    # portapapeles multiplataforma (get/set_clipboard)
+]
+
+[project.optional-dependencies]
+# DocumentAgent: lectura/escritura de PDF, DOCX y XLSX
+documents = [
+  "pdfminer.six>=20231228",
+  "python-docx>=1.1.0",
+  "openpyxl>=3.1.0",
+]
+
+# Notificaciones nativas del OS (SystemAgent.send_notification)
+notify = [
+  "plyer>=2.1.0",
+]
+
+# Instalación completa: todos los agentes con todas sus capacidades
+full = [
+  "pdfminer.six>=20231228",
+  "python-docx>=1.1.0",
+  "openpyxl>=3.1.0",
+  "plyer>=2.1.0",
+]
+
+# Solo para desarrollo y testing
+dev = [
+  "pytest>=8.2.0",
+  "pytest-asyncio>=0.23.7",
+  "pdfminer.six>=20231228",
+  "python-docx>=1.1.0",
+  "openpyxl>=3.1.0",
+]
+
+[project.urls]
+Homepage   = "https://github.com/BugCreator404/itzel"
+Repository = "https://github.com/BugCreator404/itzel"
+
+# ─── setuptools ───────────────────────────────────────────────────────────────
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["itzel_agents*"]
+
+# ─── pytest ───────────────────────────────────────────────────────────────────
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+asyncio_mode = "auto"
+# Permite importar itzel_agents (.) e itzel_core (../core) sin instalar en CI/dev.
+pythonpath   = [".", "../core"]
+
+# ─── ruff (linter) ────────────────────────────────────────────────────────────
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
