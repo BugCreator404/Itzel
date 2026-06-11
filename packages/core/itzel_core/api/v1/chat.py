@@ -220,10 +220,7 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse | ChatRe
 @router.delete("/{session_id}", status_code=204)
 async def clear_session(session_id: str) -> None:
     """Borra el historial de una sesión de la memoria."""
-    _memory._conn.execute(
-        "DELETE FROM messages WHERE session_id = ?", (session_id,)
-    )
-    _memory._conn.commit()
+    _memory.delete_session(session_id)
     log_api.info(
         "Sesión borrada: %s", session_id,
         extra={"component": "chat", "session_id": session_id},

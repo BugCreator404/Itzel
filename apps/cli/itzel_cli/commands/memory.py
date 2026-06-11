@@ -1,21 +1,23 @@
-"""Comando: itzel memory [search|list|clear|export|stats]
+"""Comando: itzel memory [search|list|clear|export|backup|restore|stats|actions]
 
-Accede directamente a la memoria episódica SQLite (~/.itzel/memory.db).
+Accede a la memoria de Itzel en la BD cifrada (~/.itzel/memory.db).
 No requiere que el backend esté corriendo — operación local pura.
 
 Subcomandos:
-  search <query>   — busca en el historial de mensajes
-  list             — lista las sesiones con conteo de mensajes
-  clear            — borra toda la memoria (con confirmación)
-  export [path]    — exporta a JSON
-  stats            — estadísticas de uso de la memoria
+  search <query>     — busca en el historial de mensajes
+  list               — lista las conversaciones con conteo de mensajes
+  clear              — borra toda la memoria (con confirmación)
+  export [path]      — exporta a JSON legible (vía backend)
+  backup [path]      — backup cifrado portable (.db.enc, con passphrase)
+  restore <archivo>  — restaura un backup .db.enc (con confirmación)
+  stats              — estadísticas de uso de la memoria
+  actions            — historial de acciones de los agentes (auditoría)
 """
 
 from __future__ import annotations
 
 import json
-import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -33,7 +35,7 @@ from ..output import (
     warn,
 )
 
-app = typer.Typer(help="Gestiona la memoria episódica de Itzel")
+app = typer.Typer(help="Gestiona la memoria de Itzel")
 
 _DB_PATH = Path.home() / ".itzel" / "memory.db"
 
@@ -47,14 +49,12 @@ def search(
     session: Optional[str] = typer.Option(None, "--session", "-s", help="Filtrar por session_id"),
     role:    Optional[str] = typer.Option(None, "--role", "-r", help="Filtrar por rol: user | assistant"),
 ) -> None:
-    """Busca en la memoria episódica por texto."""
+    """Busca en la memoria por texto."""
     store = _open_store()
     if store is None:
         return
 
     entries = store.search(query, limit=limit)
-
-    # Filtros adicionales
     if session:
         entries = [e for e in entries if e.session_id.startswith(session)]
     if role:
@@ -71,17 +71,10 @@ def search(
         ("Sesión",    "#9890b8", 10),
         ("Contenido", "",        60),
     )
-
     for e in entries:
-        # Resaltar el query en el contenido
-        content = e.content.replace("\n", " ")[:120]
-        content = _highlight(content, query)
-
-        fecha = _fmt_date(e.created_at)
-        sid   = e.session_id[:8] + "…"
-        rol   = f"[bold #f9a8d4]{e.role}[/]" if e.role == "user" else f"[#9890b8]{e.role}[/]"
-
-        table.add_row(fecha, rol, sid, content)
+        content = _highlight(e.content.replace("\n", " ")[:120], query)
+        rol = f"[bold #f9a8d4]{e.role}[/]" if e.role == "user" else f"[#9890b8]{e.role}[/]"
+        table.add_row(_fmt_date(e.created_at), rol, e.session_id[:8] + "…", content)
 
     console.print(table)
     console.print(f"\n[dim]{len(entries)} resultado(s)[/]")
@@ -91,26 +84,29 @@ def search(
 
 @app.command("list")
 def list_sessions(
-    limit: int = typer.Option(20, "--limit", "-n", help="Máximo de sesiones"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Máximo de conversaciones"),
 ) -> None:
-    """Lista las sesiones almacenadas con sus estadísticas."""
+    """Lista las conversaciones almacenadas con sus estadísticas."""
     store = _open_store()
     if store is None:
         return
 
     try:
-        rows = store._conn.execute("""
+        rows = store._db.query("""
             SELECT
-                session_id,
-                COUNT(*) as total,
-                SUM(CASE WHEN role='user' THEN 1 ELSE 0 END) as user_msgs,
-                MIN(created_at) as first_msg,
-                MAX(created_at) as last_msg
-            FROM messages
-            GROUP BY session_id
-            ORDER BY last_msg DESC
+                c.id            AS id,
+                c.title         AS title,
+                c.model         AS model,
+                COUNT(m.id)     AS total,
+                SUM(CASE WHEN m.role='user' THEN 1 ELSE 0 END) AS user_msgs,
+                MIN(m.created_at) AS first_msg,
+                MAX(m.created_at) AS last_msg
+            FROM conversations c
+            LEFT JOIN messages m ON m.conversation_id = c.id
+            GROUP BY c.id
+            ORDER BY c.updated_at DESC
             LIMIT ?
-        """, (limit,)).fetchall()
+        """, (limit,))
     except Exception as exc:
         err(f"Error al leer la memoria: {exc}")
         return
@@ -121,25 +117,24 @@ def list_sessions(
         return
 
     table = make_table(
-        "Sesiones en memoria",
+        "Conversaciones en memoria",
         ("Sesión",   "#f9a8d4", 10),
         ("Mensajes", "#4ecdc4",  9),
         ("Usuario",  "#9890b8",  8),
-        ("Primer mensaje",  "",  19),
-        ("Último mensaje",  "",  19),
+        ("Modelo",   "#9890b8", 12),
+        ("Último mensaje", "",  19),
     )
-
-    for sid, total, user_msgs, first, last in rows:
+    for r in rows:
         table.add_row(
-            sid[:8] + "…",
-            str(total),
-            str(user_msgs),
-            _fmt_date(first),
-            _fmt_date(last),
+            (r["id"] or "")[:8] + "…",
+            str(r["total"] or 0),
+            str(r["user_msgs"] or 0),
+            r["model"] or "—",
+            _fmt_date(r["last_msg"]),
         )
 
     console.print(table)
-    console.print(f"\n[dim]{len(rows)} sesión(es)[/]")
+    console.print(f"\n[dim]{len(rows)} conversación(es)[/]")
 
 
 # ─── clear ────────────────────────────────────────────────────────────────────
@@ -149,50 +144,45 @@ def clear(
     yes:     bool = typer.Option(False, "--yes", "-y", help="Sin confirmación"),
     session: Optional[str] = typer.Option(None, "--session", "-s", help="Borrar solo esta sesión"),
 ) -> None:
-    """Borra la memoria episódica (toda o una sesión específica)."""
+    """Borra la memoria (toda o una conversación específica)."""
     store = _open_store()
     if store is None:
         return
 
     if session:
-        # Borrar solo una sesión
         try:
-            count = store._conn.execute(
-                "SELECT COUNT(*) FROM messages WHERE session_id = ?", (session,)
-            ).fetchone()[0]
+            row = store._db.query_one(
+                "SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ?", (session,)
+            )
+            count = row["n"] if row else 0
         except Exception:
             count = 0
 
         if count == 0:
             warn(f"No se encontraron mensajes para la sesión '{session}'.")
             return
-
         if not yes:
             confirm(f"¿Borrar {count} mensaje(s) de la sesión '{session[:8]}…'?")
-
-        store._conn.execute("DELETE FROM messages WHERE session_id = ?", (session,))
-        store._conn.commit()
+        store.delete_session(session)
         ok(f"{count} mensaje(s) eliminados de la sesión {session[:8]}…")
         return
 
-    # Borrar todo
     try:
-        total = store._conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+        row = store._db.query_one("SELECT COUNT(*) AS n FROM messages")
+        total = row["n"] if row else 0
     except Exception:
         total = 0
 
     if total == 0:
         warn("La memoria ya está vacía.")
         return
-
     if not yes:
         confirm(f"¿Borrar TODA la memoria de Itzel? ({total} mensajes en total)")
-
     store.clear()
     ok(f"Memoria borrada — {total} mensajes eliminados.")
 
 
-# ─── export ───────────────────────────────────────────────────────────────────
+# ─── export (JSON legible) ────────────────────────────────────────────────────
 
 @app.command("export")
 def export(
@@ -200,33 +190,109 @@ def export(
     session: Optional[str] = typer.Option(None, "--session", "-s", help="Exportar solo esta sesión"),
     pretty:  bool = typer.Option(True, "--pretty/--compact", help="JSON formateado o compacto"),
 ) -> None:
-    """Exporta la memoria a un archivo JSON."""
-    store = _open_store()
-    if store is None:
+    """Exporta la memoria a un archivo JSON legible (requiere backend)."""
+    client = ItzelClient()
+    try:
+        records = client.export_memory()
+    except Exception as exc:
+        err(f"No se pudo exportar (¿backend activo?): {exc}")
+        hint("Para un backup local cifrado usa: itzel memory backup")
         return
 
-    client = ItzelClient()
-    records = client.export_memory()
-
     if session:
-        records = [r for r in records if r["session_id"].startswith(session)]
-
+        records = [r for r in records if r.get("session_id", "").startswith(session)]
     if not records:
         warn("No hay mensajes para exportar.")
         return
 
     output_path = Path(path)
-    indent = 2 if pretty else None
-
     try:
         output_path.write_text(
-            json.dumps(records, ensure_ascii=False, indent=indent),
+            json.dumps(records, ensure_ascii=False, indent=2 if pretty else None),
             encoding="utf-8",
         )
         ok(f"Exportados {len(records)} mensajes a: {output_path.resolve()}")
     except OSError as exc:
         err(f"No se pudo escribir el archivo: {exc}")
         raise typer.Exit(1)
+
+
+# ─── backup (cifrado portable .db.enc) ────────────────────────────────────────
+
+@app.command("backup")
+def backup(
+    path: Optional[str] = typer.Argument(None, help="Ruta del backup (.db.enc). Default: data/backups/"),
+    passphrase: Optional[str] = typer.Option(
+        None, "--passphrase", "-p",
+        help="Passphrase para cifrar el backup portable (recomendado)",
+        prompt="Passphrase para el backup (vacío = clave local, NO portable)",
+        hide_input=True, confirmation_prompt=True,
+    ),
+) -> None:
+    """Crea un backup cifrado y portable de la memoria (.db.enc)."""
+    try:
+        from itzel_core.backup import export_backup
+    except ImportError:
+        err("itzel-core no está instalado.", hint="pip install -e packages/core")
+        return
+
+    dest = Path(path) if path else None
+    pw = passphrase or None
+    try:
+        out = export_backup(dest, passphrase=pw)
+    except Exception as exc:
+        err(f"No se pudo crear el backup: {exc}")
+        raise typer.Exit(1)
+
+    portable = "portable (passphrase)" if pw else "local (clave del keychain)"
+    ok(f"Backup creado: {out}")
+    info(f"Tipo: {portable}")
+    if not pw:
+        hint("Sin passphrase el backup solo se restaura en ESTA máquina.")
+
+
+# ─── restore ──────────────────────────────────────────────────────────────────
+
+@app.command("restore")
+def restore(
+    archivo: str = typer.Argument(..., help="Archivo .db.enc a restaurar"),
+    passphrase: Optional[str] = typer.Option(
+        None, "--passphrase", "-p",
+        help="Passphrase con que se cifró el backup",
+        prompt="Passphrase del backup (vacío = clave local)",
+        hide_input=True,
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Sin confirmación"),
+) -> None:
+    """Restaura un backup .db.enc, reemplazando la memoria actual."""
+    try:
+        from itzel_core.backup import import_backup
+    except ImportError:
+        err("itzel-core no está instalado.", hint="pip install -e packages/core")
+        return
+
+    src = Path(archivo)
+    if not src.exists():
+        err(f"No existe el archivo: {src}")
+        raise typer.Exit(1)
+
+    if not yes:
+        confirm(
+            "¿Restaurar este backup? La memoria actual se respaldará "
+            "(.pre-import-bak) y será reemplazada."
+        )
+
+    try:
+        import_backup(src, passphrase=passphrase or None)
+    except ValueError as exc:
+        err(str(exc))
+        raise typer.Exit(1)
+    except Exception as exc:
+        err(f"No se pudo restaurar: {exc}")
+        raise typer.Exit(1)
+
+    ok("Memoria restaurada desde el backup.")
+    hint("La memoria anterior quedó en ~/.itzel/memory.db.pre-import-bak")
 
 
 # ─── stats ────────────────────────────────────────────────────────────────────
@@ -239,36 +305,77 @@ def stats() -> None:
         return
 
     try:
-        total = store._conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
-        user_count = store._conn.execute(
-            "SELECT COUNT(*) FROM messages WHERE role='user'"
-        ).fetchone()[0]
-        ai_count = store._conn.execute(
-            "SELECT COUNT(*) FROM messages WHERE role='assistant'"
-        ).fetchone()[0]
-        sessions = store._conn.execute(
-            "SELECT COUNT(DISTINCT session_id) FROM messages"
-        ).fetchone()[0]
-        oldest = store._conn.execute(
-            "SELECT MIN(created_at) FROM messages"
-        ).fetchone()[0]
-        newest = store._conn.execute(
-            "SELECT MAX(created_at) FROM messages"
-        ).fetchone()[0]
+        db = store._db
+        total    = db.query_one("SELECT COUNT(*) AS n FROM messages")["n"]
+        user_c   = db.query_one("SELECT COUNT(*) AS n FROM messages WHERE role='user'")["n"]
+        ai_c     = db.query_one("SELECT COUNT(*) AS n FROM messages WHERE role='assistant'")["n"]
+        convs    = db.query_one("SELECT COUNT(*) AS n FROM conversations")["n"]
+        summaries = db.query_one("SELECT COUNT(*) AS n FROM conversation_summaries")["n"]
+        oldest   = db.query_one("SELECT MIN(created_at) AS d FROM messages")["d"]
+        newest   = db.query_one("SELECT MAX(created_at) AS d FROM messages")["d"]
+        encrypted = db.is_encrypted
         db_size = _DB_PATH.stat().st_size if _DB_PATH.exists() else 0
     except Exception as exc:
         err(f"Error al leer estadísticas: {exc}")
         return
 
-    console.print("\n[bold #f9a8d4]Memoria Episódica — Estadísticas[/]\n")
+    console.print("\n[bold #f9a8d4]Memoria de Itzel — Estadísticas[/]\n")
     info(f"Total mensajes:    {total}")
-    info(f"  → del usuario:   {user_count}")
-    info(f"  → de Itzel:      {ai_count}")
-    info(f"Sesiones únicas:   {sessions}")
+    info(f"  → del usuario:   {user_c}")
+    info(f"  → de Itzel:      {ai_c}")
+    info(f"Conversaciones:    {convs}")
+    info(f"Resúmenes:         {summaries}")
     info(f"Primer mensaje:    {_fmt_date(oldest) if oldest else '—'}")
     info(f"Último mensaje:    {_fmt_date(newest) if newest else '—'}")
+    info(f"Cifrado:           {'sí (AES-256)' if encrypted else 'NO'}")
     info(f"Tamaño en disco:   {db_size // 1024} KB  ({_DB_PATH})")
     console.print()
+
+
+# ─── actions (auditoría) ──────────────────────────────────────────────────────
+
+@app.command("actions")
+def actions(
+    limit: int = typer.Option(30, "--limit", "-n", help="Máximo de acciones"),
+    agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Filtrar por agente"),
+) -> None:
+    """Muestra el historial de acciones de los agentes (auditoría)."""
+    try:
+        from itzel_core.audit import get_actions
+    except ImportError:
+        err("itzel-core no está instalado.", hint="pip install -e packages/core")
+        return
+
+    try:
+        rows = get_actions(limit=limit, agent=agent)
+    except Exception as exc:
+        err(f"Error al leer la auditoría: {exc}")
+        return
+
+    if not rows:
+        warn("No hay acciones registradas.")
+        return
+
+    table = make_table(
+        "Auditoría de acciones",
+        ("Fecha",  "#9890b8", 19),
+        ("Agente", "#4ecdc4", 10),
+        ("Acción", "#f9a8d4", 16),
+        ("Objetivo", "",      30),
+        ("Resultado", "",     10),
+    )
+    for r in rows:
+        res = r["result"]
+        color = {"ok": "#4ecdc4", "denied": "#fbbf24", "error": "#f87171"}.get(res, "")
+        table.add_row(
+            _fmt_date(r["created_at"]),
+            r["agent"] or "—",
+            r["action"] or "—",
+            (r["target"] or "—")[:30],
+            f"[{color}]{res}[/]" if color else res,
+        )
+    console.print(table)
+    console.print(f"\n[dim]{len(rows)} acción(es)[/]")
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
@@ -290,14 +397,12 @@ def _open_store():
 
 
 def _fmt_date(iso: Optional[str]) -> str:
-    """Formatea ISO datetime a formato legible corto."""
+    """Formatea ISO datetime a formato legible corto en hora local."""
     if not iso:
         return "—"
     try:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-        # Mostrar en hora local si es posible
-        local = dt.astimezone()
-        return local.strftime("%Y-%m-%d %H:%M")
+        return dt.astimezone().strftime("%Y-%m-%d %H:%M")
     except Exception:
         return iso[:16]
 
@@ -307,7 +412,5 @@ def _highlight(text: str, query: str) -> str:
     idx = text.lower().find(query.lower())
     if idx == -1:
         return text
-    before = text[:idx]
-    match  = text[idx : idx + len(query)]
-    after  = text[idx + len(query):]
+    before, match, after = text[:idx], text[idx:idx+len(query)], text[idx+len(query):]
     return f"{before}[bold #fbbf24]{match}[/]{after}"

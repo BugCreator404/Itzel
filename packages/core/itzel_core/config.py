@@ -52,6 +52,21 @@ class RateLimitConfig(BaseModel):
     web_rps: int = 2
 
 
+class DBConfig(BaseModel):
+    # Ruta de la BD cifrada (None = ~/.itzel/memory.db por defecto en db.py).
+    path: Optional[str] = None
+    wal: bool = True                       # WAL mode para concurrencia
+    backup_dir: str = "data/backups"       # destino de los backups cifrados
+    backup_weekly: bool = True             # backup automático semanal
+
+
+class CacheConfig(BaseModel):
+    enabled: bool = True
+    l1_max: int = 100                      # entradas máximas del LRU en memoria
+    l2_ttl_s: int = 86_400                 # TTL del cache persistente (24 h)
+    summary_threshold_tokens: int = 4_000  # umbral para generar resumen episódico
+
+
 class ItzelConfig(BaseModel):
     version: str = "0.1.0"
     language: str = "es-MX"
@@ -60,6 +75,8 @@ class ItzelConfig(BaseModel):
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
+    db: DBConfig = Field(default_factory=DBConfig)
+    cache: CacheConfig = Field(default_factory=CacheConfig)
     telemetry: bool = False  # siempre False — principio no negociable
     analytics: bool = False  # siempre False
 
