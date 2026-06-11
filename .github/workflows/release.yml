@@ -1,0 +1,89 @@
+name: Release
+
+# Se dispara al empujar un tag de versión (v1.2.3). Construye los binarios para
+# los 3 OS (reutilizando build.yml), genera el CHANGELOG desde los commits
+# semánticos y publica un GitHub Release con los instaladores adjuntos.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write     # necesario para crear releases y subir binarios
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ── Build de los 3 OS (reutiliza build.yml) ───────────────────────────────
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  # ── Publicación del release ───────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # historia completa para el CHANGELOG
+
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: itzel-*
+          merge-multiple: true
+
+      - name: Generate CHANGELOG from semantic commits
+        id: changelog
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo '')"
+          RANGE="${PREV:+${PREV}..}${TAG}"
+          echo "Rango de commits: ${RANGE:-todo}"
+
+          section() {
+            # $1 = prefijo de commit (feat|fix...), $2 = título
+            local body
+            body="$(git log ${RANGE} --no-merges --pretty=format:'- %s (%h)' \
+                    --grep="^$1" 2>/dev/null || true)"
+            if [ -n "$body" ]; then
+              printf '\n### %s\n%s\n' "$2" "$body"
+            fi
+          }
+
+          {
+            echo "## Itzel ${TAG}"
+            [ -n "$PREV" ] && echo "_Cambios desde ${PREV}_"
+            section "feat"     "✨ Nuevas funciones"
+            section "fix"      "🐛 Correcciones"
+            section "perf"     "⚡ Rendimiento"
+            section "refactor" "♻️ Refactors"
+            section "docs"     "📝 Documentación"
+            section "test"     "✅ Tests"
+            section "chore"    "🔧 Mantenimiento"
+          } > CHANGELOG_RELEASE.md
+
+          echo "----- CHANGELOG generado -----"
+          cat CHANGELOG_RELEASE.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG_RELEASE.md
+          # Prerelease si el tag tiene sufijo (-beta, -rc, etc.)
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: false
+          files: |
+            artifacts/**/*.msi
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.sig
+            artifacts/**/latest.json

@@ -2,8 +2,10 @@
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
+    "lib": ["ES2020"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "types": ["node"],
     "allowSyntheticDefaultImports": true,
     "strict": true
   },

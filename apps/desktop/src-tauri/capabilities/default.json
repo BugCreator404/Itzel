@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permisos por defecto de Itzel: plugins de sistema usados por la app más el auto-updater. Sin esta capability, las llamadas a los plugins desde el frontend fallan en Tauri 2.",
+  "windows": ["main", "chat"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-position",
+    "core:event:default",
+    "shell:default",
+    "clipboard-manager:default",
+    "notification:default",
+    "global-shortcut:default",
+    "updater:default",
+    "process:default"
+  ]
+}

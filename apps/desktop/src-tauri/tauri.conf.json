@@ -86,6 +86,12 @@
     },
     "notification": {
       "all": true
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/BugCreator404/itzel/releases/latest/download/latest.json"
+      ],
+      "pubkey": "REPLACE_WITH_TAURI_SIGNER_PUBKEY"
     }
   }
 }

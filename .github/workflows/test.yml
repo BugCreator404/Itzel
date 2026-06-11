@@ -1,0 +1,98 @@
+name: Test
+
+# Lint + typecheck + tests con cobertura.
+# Corre en cada PR a main y en push a main/dev. El build de binarios vive
+# en build.yml para no duplicar trabajo en cada PR.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+# Cancela ejecuciones anteriores del mismo PR/rama si llega un push nuevo.
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Frontend: React + TypeScript (Vite / Vitest) ──────────────────────────
+  frontend:
+    name: Frontend — lint + typecheck + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter desktop typecheck
+
+      - name: Lint
+        run: pnpm --filter desktop lint
+
+      - name: Test + coverage
+        run: pnpm --filter desktop test -- --coverage
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: apps/desktop/coverage/
+          if-no-files-found: ignore
+
+  # ── Backend: Python (FastAPI / pytest) ────────────────────────────────────
+  python:
+    name: Python — ruff + mypy + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system deps (SQLCipher)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlcipher-dev
+
+      - name: Install packages
+        run: |
+          pip install -e "packages/core[dev]"
+          pip install -e "apps/cli[dev]"
+          pip install pytest-cov
+
+      - name: Ruff lint
+        run: ruff check packages/core apps/cli
+
+      - name: Type check
+        run: mypy packages/core/itzel_core apps/cli/itzel_cli --ignore-missing-imports
+
+      - name: Tests + coverage
+        run: |
+          pytest packages/core/tests/ apps/cli/tests/ \
+            --cov=packages/core/itzel_core \
+            --cov=apps/cli/itzel_cli \
+            --cov-report=xml \
+            --cov-report=term-missing
+
+      - name: Upload python coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-python
+          path: coverage.xml
+          if-no-files-found: ignore

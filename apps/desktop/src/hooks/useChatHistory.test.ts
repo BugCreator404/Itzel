@@ -2,7 +2,7 @@
  * Tests para useChatHistory — navegación de historial estilo terminal.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useChatHistory } from "./useChatHistory";
 

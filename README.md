@@ -9,6 +9,11 @@
 [![Model](https://img.shields.io/badge/Modelo-Itzel--1B%20local-6ee7b7?style=for-the-badge&labelColor=1a0828)](models/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-bienvenidos-fbbf24?style=for-the-badge&labelColor=1a0828)](CONTRIBUTING.md)
 
+[![Tests](https://img.shields.io/github/actions/workflow/status/BugCreator404/itzel/test.yml?branch=main&style=for-the-badge&labelColor=1a0828&label=Tests)](https://github.com/BugCreator404/itzel/actions/workflows/test.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/BugCreator404/itzel/build.yml?branch=main&style=for-the-badge&labelColor=1a0828&label=Build)](https://github.com/BugCreator404/itzel/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/BugCreator404/itzel?style=for-the-badge&labelColor=1a0828&color=c4b5fd&display_name=tag&sort=semver)](https://github.com/BugCreator404/itzel/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/BugCreator404/itzel/total?style=for-the-badge&labelColor=1a0828&color=6ee7b7)](https://github.com/BugCreator404/itzel/releases)
+
 *"Itzel" · Maya · rocío del cielo · la primera inteligencia que ves al despertar*
 
 **[🇲🇽 Español](#español) · [🇺🇸 English](#english)**
