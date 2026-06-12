@@ -67,6 +67,24 @@ class CacheConfig(BaseModel):
     summary_threshold_tokens: int = 4_000  # umbral para generar resumen episódico
 
 
+class SkillsConfig(BaseModel):
+    enabled: bool = True                   # sistema de skills on/off
+    autoload: bool = True                  # cargar skills al arrancar el engine
+    disabled: list[str] = Field(default_factory=list)  # skills bloqueadas por nombre
+
+
+class MCPServerConfig(BaseModel):
+    """Un servidor MCP externo. La API key NUNCA va aquí — vive en el keychain
+    del OS bajo el servicio 'itzel', usuario 'mcp-<name>' (principio #8)."""
+    name: str
+    transport: Literal["sse", "stdio"] = "sse"
+    url: Optional[str] = None              # requerido para transport="sse"
+    command: Optional[str] = None          # requerido para transport="stdio"
+    args: list[str] = Field(default_factory=list)
+    auth: Literal["none", "api_key"] = "none"
+    enabled: bool = True
+
+
 class ItzelConfig(BaseModel):
     version: str = "0.1.0"
     language: str = "es-MX"
@@ -77,6 +95,8 @@ class ItzelConfig(BaseModel):
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     db: DBConfig = Field(default_factory=DBConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
+    skills: SkillsConfig = Field(default_factory=SkillsConfig)
+    mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
     telemetry: bool = False  # siempre False — principio no negociable
     analytics: bool = False  # siempre False
 

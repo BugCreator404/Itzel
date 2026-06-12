@@ -1,0 +1,3 @@
+# Dependencias extra de la skill "clipboard"
+# Instalar con: pip install -r skills/official/clipboard/requirements.txt
+pyperclip>=1.8.2

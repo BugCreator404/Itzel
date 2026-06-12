@@ -1,0 +1,9 @@
+{
+  "name": "clipboard",
+  "version": "1.0.0",
+  "description": "Lee y escribe el portapapeles del sistema: copia texto o dime qué hay copiado.",
+  "description_en": "Reads and writes the system clipboard: copy text or ask what's currently copied.",
+  "author": "BugCreator404",
+  "triggers": ["portapapeles", "copia", "copiado", "clipboard", "copy"],
+  "permissions": ["clipboard"]
+}

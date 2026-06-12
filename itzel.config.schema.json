@@ -61,6 +61,59 @@
         "web_rps": { "type": "integer", "minimum": 1, "default": 2 }
       }
     },
+    "db": {
+      "type": "object",
+      "properties": {
+        "path": { "type": ["string", "null"], "default": null },
+        "wal": { "type": "boolean", "default": true },
+        "backup_dir": { "type": "string", "default": "data/backups" },
+        "backup_weekly": { "type": "boolean", "default": true }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "l1_max": { "type": "integer", "minimum": 1, "default": 100 },
+        "l2_ttl_s": { "type": "integer", "minimum": 60, "default": 86400 },
+        "summary_threshold_tokens": { "type": "integer", "minimum": 256, "default": 4000 }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "autoload": { "type": "boolean", "default": true },
+        "disabled": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Nombres de skills bloqueadas (no se cargan)."
+        }
+      }
+    },
+    "mcp_servers": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "transport": { "type": "string", "enum": ["sse", "stdio"], "default": "sse" },
+          "url": { "type": ["string", "null"], "description": "Requerido si transport=sse." },
+          "command": { "type": ["string", "null"], "description": "Requerido si transport=stdio." },
+          "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+          "auth": {
+            "type": "string",
+            "enum": ["none", "api_key"],
+            "default": "none",
+            "description": "La API key vive en el keychain del OS (itzel/mcp-<name>), nunca en este archivo."
+          },
+          "enabled": { "type": "boolean", "default": true }
+        },
+        "required": ["name"]
+      }
+    },
     "shortcuts": {
       "type": "object",
       "additionalProperties": { "type": "string" }

@@ -1,0 +1,9 @@
+{
+  "name": "calculator",
+  "version": "1.0.0",
+  "description": "Calculadora matemática segura: aritmética, potencias, raíces y funciones de math (sin ejecutar código arbitrario).",
+  "description_en": "Safe math calculator: arithmetic, powers, roots and math functions (no arbitrary code execution).",
+  "author": "BugCreator404",
+  "triggers": ["calcula", "cuánto es", "cuanto es", "calculate", "how much is"],
+  "permissions": []
+}

@@ -1,0 +1,9 @@
+{
+  "name": "web-search",
+  "version": "1.0.0",
+  "description": "Búsqueda web con DuckDuckGo, sin API key. La consulta sale de tu máquina SOLO cuando tú invocas esta skill.",
+  "description_en": "Web search via DuckDuckGo, no API key. Your query leaves your machine ONLY when you invoke this skill.",
+  "author": "BugCreator404",
+  "triggers": ["busca", "buscar en la web", "búscame", "buscame", "search the web", "search for"],
+  "permissions": ["network"]
+}
