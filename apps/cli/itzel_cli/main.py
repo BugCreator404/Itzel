@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from . import __version__
-from .commands import ask, chat, config, memory, mcp, model, run, skills, status, uninstall, update, voice
+from .commands import ask, chat, config, doctor, memory, mcp, model, run, skills, status, uninstall, update, voice
 
 console = Console()
 app = typer.Typer(
@@ -74,6 +74,15 @@ def setup_cmd() -> None:
     """Configuración inicial interactiva: descarga modelo, configura voz y entorno."""
     from .commands import setup
     setup.run()
+
+
+@app.command(name="doctor")
+def doctor_cmd(
+    json_output: bool = typer.Option(False, "--json", help="Salida en JSON"),
+    quiet:       bool = typer.Option(False, "--quiet", "-q", help="Sin instrucciones correctivas"),
+) -> None:
+    """Verifica el estado completo del sistema: Python, modelo, voz, BD, disco, RAM."""
+    doctor.run(json_output=json_output, quiet=quiet)
 
 
 @app.command(name="status")

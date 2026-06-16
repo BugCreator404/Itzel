@@ -85,6 +85,33 @@ class MCPServerConfig(BaseModel):
     enabled: bool = True
 
 
+class MonitoringConfig(BaseModel):
+    """Configuración del monitoreo local — todo queda en el equipo (principio #1).
+
+    Cuando enabled=False: 0 bytes de logs, dashboard devuelve 503, alertas
+    silenciadas. El usuario puede cambiar esto con:
+        itzel config monitoring.enabled false
+    """
+    enabled: bool = True
+    # Dashboard accesible en http://localhost:<port>/dashboard
+    # (montado en el mismo proceso del engine, no en dashboard_port separado)
+    dashboard_port: int = 7433              # reservado para modo standalone futuro
+
+    # Logs estructurados — rotación
+    log_max_bytes: int = 100 * 1024 * 1024   # 100 MB por archivo
+    log_retention_days: int = 7              # máx días antes de rotar
+
+    # Alertas del OS (notificaciones nativas)
+    alerts_enabled: bool = True
+    alert_ram_pct: float = 80.0              # % de RAM que dispara alerta
+    alert_agent_timeout_s: int = 120         # agente sin respuesta → alerta
+    alert_consecutive_errors: int = 3        # errores del modelo → alerta
+    alert_disk_free_gb: float = 1.0          # GB libres mínimos
+
+    # Métricas en memoria (ventana deslizante)
+    metrics_window_s: int = 300             # 5 min de historial en RAM
+
+
 class ItzelConfig(BaseModel):
     version: str = "0.1.0"
     language: str = "es-MX"
@@ -96,6 +123,7 @@ class ItzelConfig(BaseModel):
     db: DBConfig = Field(default_factory=DBConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)
+    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
     telemetry: bool = False  # siempre False — principio no negociable
     analytics: bool = False  # siempre False

@@ -22,6 +22,7 @@ from .api.v1 import chat, health, models, status, voice
 from .api.v1 import websocket as ws_route
 from .config import config
 from .logger import log_engine
+from .monitoring.dashboard import router as dashboard_router
 from .middleware import AgentTimeoutMiddleware, RequestLoggerMiddleware
 from .models import get_adapter
 from .models.base import ModelNotAvailableError
@@ -116,6 +117,16 @@ def create_app() -> FastAPI:
 
     # ── WebSocket /api/v1/voice/ws (pipeline de voz) ─────────────────
     app.include_router(voice.router,   prefix="/api/v1")
+
+    # ── Dashboard de monitoreo local /dashboard ───────────────────────
+    # Solo accesible desde localhost (el CORS ya lo garantiza).
+    # Devuelve 503 automáticamente cuando monitoring.enabled=False.
+    if config.monitoring.enabled:
+        app.include_router(dashboard_router)
+        log_engine.info(
+            "Dashboard de monitoreo en /dashboard",
+            extra={"component": "engine"},
+        )
 
     return app
 
