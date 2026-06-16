@@ -16,6 +16,7 @@ import { useChatStream } from "./hooks/useChatStream";
 import { useMascotaMood } from "./hooks/useMascotaMood";
 import { Mascota } from "./components/Mascota";
 import { CommandPalette } from "./components/CommandPalette";
+import { MisDocumentos } from "./components/MisDocumentos";
 import { useChatHistory } from "./hooks/useChatHistory";
 import { useShortcuts } from "./hooks/useShortcuts";
 
@@ -43,6 +44,7 @@ export function ChatFloat() {
   const [messages,       setMessages]       = useState<Message[]>([]);
   const [input,          setInput]          = useState("");
   const [paletteOpen,    setPaletteOpen]    = useState(false);
+  const [docsOpen,       setDocsOpen]       = useState(false);
 
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
@@ -120,6 +122,14 @@ export function ChatFloat() {
     "stop-agent":      () => chat.cancel(),
     "command-palette": () => setPaletteOpen(p => !p),
   });
+
+  // ── abrir "Mis documentos" desde la paleta de comandos ─────────────────────
+
+  useEffect(() => {
+    const open = () => setDocsOpen(true);
+    window.addEventListener("itzel:open-documents", open);
+    return () => window.removeEventListener("itzel:open-documents", open);
+  }, []);
 
   // ── acciones del chat ──────────────────────────────────────────────────────
 
@@ -297,6 +307,11 @@ export function ChatFloat() {
       {/* ── Command Palette ───────────────────────────────────────── */}
       {paletteOpen && (
         <CommandPalette onClose={() => setPaletteOpen(false)} />
+      )}
+
+      {/* ── Mis documentos (RAG) ──────────────────────────────────── */}
+      {docsOpen && (
+        <MisDocumentos onClose={() => setDocsOpen(false)} />
       )}
 
     </div>

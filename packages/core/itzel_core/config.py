@@ -84,6 +84,75 @@ class MCPServerConfig(BaseModel):
     enabled: bool = True
 
 
+class RAGConfig(BaseModel):
+    """Memoria semántica (RAG) sobre tus documentos — 100% local (principios #1 y #2).
+
+    ES: Indexa carpetas que tú elijas en una base vectorial local (ChromaDB) para
+        poder buscar por significado, no solo por palabra exacta. Los embeddings
+        se generan en tu máquina (Ollama o el modelo ONNX que trae ChromaDB) y
+        NUNCA salen del equipo. Si rag.enabled=False: 0 vectores, 0 indexado.
+
+    EN: Local semantic memory over your own documents. Embeddings are generated
+        on-device; nothing is ever sent to external APIs.
+
+    Cámbialo con:  itzel config rag.enabled false
+    Borra el índice con:  itzel memory clear --vectors
+    """
+    enabled: bool = True
+
+    # ── carpetas a indexar ────────────────────────────────────────────────────
+    # SOLO se indexa lo que esté dentro de estas rutas (aislamiento, principio #5).
+    # Vacío por defecto: el usuario decide explícitamente qué exponer.
+    index_dirs: list[str] = Field(default_factory=list)
+
+    # Extensiones soportadas. Cualquier otra se ignora.
+    file_types: list[str] = Field(
+        default_factory=lambda: [
+            ".txt", ".md", ".pdf", ".docx", ".py", ".js", ".ts",
+        ]
+    )
+    # Archivos por encima de este tamaño se saltan (evita PDFs gigantes).
+    max_file_mb: float = 10.0
+    # Rutas/patrones que nunca se indexan (node_modules, .git, venvs, secretos).
+    exclude_globs: list[str] = Field(
+        default_factory=lambda: [
+            "**/.git/**", "**/node_modules/**", "**/.venv/**", "**/venv/**",
+            "**/__pycache__/**", "**/.itzel/**", "**/dist/**", "**/build/**",
+            "**/*.min.js", "**/.env*",
+        ]
+    )
+
+    # ── base vectorial (ChromaDB local, sin servidor) ─────────────────────────
+    # Ruta relativa → resuelve dentro de ~/.itzel/ ; absoluta → se usa tal cual.
+    store_dir: str = "data/vectors"
+    collection: str = "itzel_docs"
+
+    # ── modelo de embeddings ──────────────────────────────────────────────────
+    # "ollama:nomic-embed-text" (768d, preferido) o "onnx" (all-MiniLM-L6-v2,
+    # 384d, fallback incluido en chromadb). El nombre se guarda en la colección;
+    # si cambias de modelo hay que re-indexar (las dimensiones no son compatibles).
+    embed_model: str = "ollama:nomic-embed-text"
+    embed_fallback: str = "onnx"   # se usa si Ollama/el modelo no está disponible
+
+    # ── chunking (troceado de documentos) ─────────────────────────────────────
+    chunk_size_tokens: int = 512        # tamaño objetivo de cada fragmento
+    chunk_overlap_tokens: int = 64      # solape entre fragmentos contiguos
+
+    # ── retrieval ─────────────────────────────────────────────────────────────
+    top_k: int = 5                      # fragmentos más relevantes a devolver
+    min_score: float = 0.0              # similitud mínima (0–1); 0 = sin filtro
+    context_window_tokens: int = 200    # tokens de contexto alrededor del match
+
+    # ── pipeline RAG en /chat ─────────────────────────────────────────────────
+    # Si True, /chat inyecta automáticamente contexto de tus documentos.
+    # Opt-in: aunque rag.enabled=True, el auto-contexto se activa aparte.
+    auto_context: bool = False
+
+    # ── watcher (indexado incremental en vivo) ────────────────────────────────
+    watch: bool = True                  # vigilar cambios con watchdog si está
+    watch_debounce_s: float = 2.0       # esperar N s tras un cambio antes de indexar
+
+
 class MonitoringConfig(BaseModel):
     """Configuración del monitoreo local — todo queda en el equipo (principio #1).
 
@@ -122,6 +191,7 @@ class ItzelConfig(BaseModel):
     db: DBConfig = Field(default_factory=DBConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)
+    rag: RAGConfig = Field(default_factory=RAGConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
     telemetry: bool = False  # siempre False — principio no negociable
@@ -150,6 +220,22 @@ def _save_default_config(cfg: ItzelConfig) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     with dest.open("w", encoding="utf-8") as f:
         json.dump(cfg.model_dump(), f, indent=2, ensure_ascii=False)
+
+
+def save_config(cfg: Optional[ItzelConfig] = None) -> Path:
+    """Persiste la config (la global por defecto) en ~/.itzel/itzel.config.json.
+
+    Respeta el primer archivo de config existente si hay uno en el proyecto;
+    si no, escribe en el home. telemetry/analytics se fuerzan a False siempre.
+    """
+    cfg = cfg or config
+    cfg.telemetry = False
+    cfg.analytics = False
+    dest = next((p for p in _CONFIG_PATHS if p.exists()), _CONFIG_PATHS[-1])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("w", encoding="utf-8") as f:
+        json.dump(cfg.model_dump(), f, indent=2, ensure_ascii=False)
+    return dest
 
 
 # Instancia global para importar en otros módulos

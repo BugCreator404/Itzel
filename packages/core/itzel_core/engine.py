@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.v1 import chat, health, models, status, voice
+from .api.v1 import chat, health, models, rag, status, voice
 from .api.v1 import websocket as ws_route
 from .config import config
 from .logger import log_engine
@@ -109,6 +109,12 @@ def create_app() -> FastAPI:
     app.include_router(chat.router,    prefix="/api/v1")
     app.include_router(status.router,  prefix="/api/v1")
     app.include_router(models.router,  prefix="/api/v1")
+
+    # ── Memoria semántica (RAG) /api/v1/rag ──────────────────────────
+    # Se monta SIEMPRE: el router se auto-protege (503 si rag.enabled=False,
+    # 501 si faltan las deps opcionales [rag]). Así la UI "Mis documentos"
+    # puede consultar /rag/status y ofrecer activarlo, en vez de un 404.
+    app.include_router(rag.router,     prefix="/api/v1")
 
     # ── WebSocket /ws (chat bridge) ──────────────────────────────────
     app.include_router(ws_route.router)
