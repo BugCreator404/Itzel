@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from . import __version__
-from .commands import ask, chat, config, memory, mcp, model, run, skills, status, update, voice
+from .commands import ask, chat, config, memory, mcp, model, run, skills, status, uninstall, update, voice
 
 console = Console()
 app = typer.Typer(
@@ -90,6 +90,16 @@ def update_cmd(
 ) -> None:
     """Actualiza Itzel a la última versión. Verifica la firma antes de instalar."""
     update.run(channel=channel)
+
+
+@app.command(name="uninstall")
+def uninstall_cmd(
+    data_only:   bool = typer.Option(False, "--data-only",   help="Solo borrar datos, conservar el CLI"),
+    keep_models: bool = typer.Option(False, "--keep-models", help="Conservar modelos descargados (~1 GB)"),
+    yes:         bool = typer.Option(False, "--yes", "-y",   help="Sin confirmación interactiva"),
+) -> None:
+    """Desinstala Itzel: CLI, datos y credenciales del keychain."""
+    uninstall.run(data_only=data_only, keep_models=keep_models, yes=yes)
 
 
 @app.command(name="pipe")

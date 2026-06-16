@@ -70,20 +70,39 @@ def run() -> None:
     _step("4", "Descargar modelo")
     _setup_model(backend)
 
-    # ── Paso 5: Escribir config y verificar ───────────────────────────────────
-    _step("5", "Guardando configuración")
-    _write_config(language=language, backend=backend)
+    # ── Paso 5: Hotkey global ─────────────────────────────────────────────────
+    _step("5", "Atajo de teclado global")
+    hotkey = _choose_hotkey()
+
+    # ── Paso 6: Voz ───────────────────────────────────────────────────────────
+    _step("6", "Asistente de voz")
+    voice_enabled = _setup_voice()
+
+    # ── Paso 7: Escribir config y verificar ───────────────────────────────────
+    _step("7", "Guardando configuración")
+    _write_config(language=language, backend=backend, hotkey=hotkey,
+                  voice_enabled=voice_enabled)
     _verify_setup()
 
     # ── Resumen final ─────────────────────────────────────────────────────────
     console.print()
     ok("¡Itzel está lista! 🦎")
     console.print()
+    if voice_enabled:
+        console.print(
+            f"[bold #f9a8d4]Presiona {hotkey} para hablar conmigo.[/]"
+        )
+    else:
+        console.print(
+            f"[bold #f9a8d4]Presiona {hotkey} para abrir Itzel.[/]"
+        )
+    console.print()
     hint("Comandos para empezar:")
     hint("  itzel ask '¿Qué es un ajolote?'")
     hint("  itzel chat")
     hint("  itzel status")
     console.print()
+    _launch_app()
 
 
 # ─── pasos ────────────────────────────────────────────────────────────────────
@@ -298,7 +317,145 @@ def _setup_llamacpp_model() -> None:
         hint("Intenta de nuevo con: itzel model pull itzel-1b")
 
 
-def _write_config(language: str, backend: str) -> None:
+def _choose_hotkey() -> str:
+    """Pregunta al usuario qué hotkey global usar para abrir Itzel."""
+    console.print("[#9890b8]Elige el atajo de teclado global:[/]")
+    console.print("  [bold #4ecdc4]1[/] Ctrl+Space   [dim]← recomendado[/]")
+    console.print("  [bold #4ecdc4]2[/] Ctrl+Shift+I")
+    console.print("  [bold #4ecdc4]3[/] Alt+Space")
+    console.print("  [bold #4ecdc4]4[/] Personalizado")
+    console.print()
+
+    choice = Prompt.ask(
+        "[#f9a8d4]Hotkey[/]", choices=["1", "2", "3", "4"], default="1"
+    )
+    hotkey_map = {
+        "1": "ctrl+space",
+        "2": "ctrl+shift+i",
+        "3": "alt+space",
+    }
+    if choice == "4":
+        hotkey = Prompt.ask(
+            "[#f9a8d4]Escribe el atajo[/] [dim](ej. ctrl+shift+x)[/]",
+            default="ctrl+space",
+        ).lower().strip()
+    else:
+        hotkey = hotkey_map[choice]
+    ok(f"Hotkey: {hotkey}")
+    return hotkey
+
+
+def _setup_voice() -> bool:
+    """
+    Pregunta si habilitar la voz y descarga los modelos necesarios.
+    Devuelve True si el usuario eligió habilitar la voz.
+    """
+    console.print("[#9890b8]¿Habilitar asistente de voz?[/]")
+    console.print("  Requiere ~400 MB extra (Whisper small + Kokoro-82M).")
+    console.print()
+
+    enabled = Confirm.ask("[#f9a8d4]¿Habilitar voz?[/]", default=False)
+    if not enabled:
+        info("Voz deshabilitada — actívala después con: itzel config voice.enabled true")
+        return False
+
+    ok("Voz habilitada")
+    _download_voice_models()
+    return True
+
+
+def _download_voice_models() -> None:
+    """Descarga Whisper small y Kokoro-82M con barra de progreso."""
+    import urllib.request
+
+    models = [
+        {
+            "name":  "Whisper small (STT)",
+            "file":  "whisper-small.bin",
+            "url":   "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+            "size":  "~466 MB",
+        },
+        {
+            "name":  "Kokoro-82M (TTS)",
+            "file":  "kokoro-v0_19.onnx",
+            "url":   "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v0_19.onnx",
+            "size":  "~83 MB",
+        },
+    ]
+
+    from ..output import download_progress
+
+    for m in models:
+        dest = _MODELS_DIR / m["file"]
+        if dest.exists():
+            ok(f"{m['name']}: ya descargado")
+            continue
+
+        console.print(f"\n[#9890b8]Descargando {m['name']} {m['size']}…[/]")
+        try:
+            progress = download_progress()
+            with progress:
+                task = progress.add_task(m["name"], total=None)
+
+                def _hook(block: int, block_size: int, total: int,
+                          _p=progress, _t=task) -> None:
+                    if total > 0:
+                        _p.update(_t, total=total, completed=block * block_size)
+
+                urllib.request.urlretrieve(m["url"], dest, reporthook=_hook)
+            ok(f"{m['name']} descargado → {dest.name}")
+        except Exception as exc:
+            warn(f"No se pudo descargar {m['name']}: {exc}")
+            hint(f"Descárgalo manualmente y colócalo en {_MODELS_DIR}")
+            if dest.exists():
+                dest.unlink()   # borrar descarga parcial
+
+
+def _launch_app() -> None:
+    """Intenta abrir la app de escritorio Tauri si está instalada."""
+    import platform
+    import subprocess as sp
+
+    candidates: list[Path] = []
+    system = platform.system()
+
+    if system == "Windows":
+        candidates = [
+            Path(r"C:\Program Files\Itzel\itzel.exe"),
+            Path.home() / "AppData" / "Local" / "Programs" / "Itzel" / "itzel.exe",
+        ]
+    elif system == "Darwin":
+        candidates = [Path("/Applications/Itzel.app")]
+    else:
+        candidates = [
+            Path.home() / ".local" / "bin" / "itzel-desktop",
+            Path("/usr/local/bin/itzel-desktop"),
+        ]
+
+    app = next((p for p in candidates if p.exists()), None)
+    if app is None:
+        hint("App de escritorio no encontrada — descárgala en:")
+        hint("  https://github.com/BugCreator404/itzel/releases/latest")
+        return
+
+    console.print()
+    launch = Confirm.ask("[#f9a8d4]¿Abrir Itzel ahora?[/]", default=True)
+    if not launch:
+        return
+
+    try:
+        if system == "Darwin":
+            sp.Popen(["open", str(app)], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        else:
+            sp.Popen([str(app)], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        ok("¡Itzel abierta!")
+    except Exception as exc:
+        warn(f"No se pudo abrir la app: {exc}")
+
+
+def _write_config(language: str, backend: str,
+                  hotkey: str = "ctrl+space",
+                  voice_enabled: bool = False) -> None:
     """Escribe la configuración inicial en ~/.itzel/itzel.config.json."""
     model_active = "itzel-1b" if backend == "llamacpp" else "ollama/llama3.1:8b"
     if backend == "none":
@@ -321,7 +478,7 @@ def _write_config(language: str, backend: str) -> None:
             "port": 7432,
         },
         "voice": {
-            "enabled":   False,
+            "enabled":   voice_enabled,
             "language":  language,
             "stt_model": "whisper-small",
             "tts_model": "kokoro",
@@ -329,6 +486,9 @@ def _write_config(language: str, backend: str) -> None:
         "security": {
             "confirm_irreversible": True,
             "sandbox_enabled":      True,
+        },
+        "shortcuts": {
+            "open": hotkey,
         },
     }
 

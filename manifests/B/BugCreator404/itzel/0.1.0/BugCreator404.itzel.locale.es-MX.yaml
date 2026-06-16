@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.6.0.schema.json
+
+PackageIdentifier: BugCreator404.itzel
+PackageVersion: 0.1.0
+PackageLocale: es-MX
+Publisher: BugCreator404
+PublisherUrl: https://github.com/BugCreator404
+PublisherSupportUrl: https://github.com/BugCreator404/itzel/issues
+PrivacyUrl: https://github.com/BugCreator404/itzel#privacidad
+Author: Edwin Yair Hernandez Limon
+PackageName: Itzel
+PackageUrl: https://github.com/BugCreator404/itzel
+License: MIT
+LicenseUrl: https://github.com/BugCreator404/itzel/blob/main/LICENSE
+Copyright: Copyright (c) 2025 Edwin Yair Hernandez Limon
+CopyrightUrl: https://github.com/BugCreator404/itzel/blob/main/LICENSE
+ShortDescription: Asistente de IA personal local. Sin telemetria. Sin nube.
+Description: |-
+  Itzel es una asistente de IA personal que corre completamente en tu maquina.
+  Funciona con Itzel-1B (Qwen2.5 fine-tuned) o Ollama, con voz, mascota ajolote
+  pixel art, sistema de skills extensible y soporte para servidores MCP.
+
+  100% local. Cero telemetria. Cero datos al exterior.
+  Bilingue: Espanol (Mexico) primero, ingles como fallback.
+Moniker: itzel
+Tags:
+  - ia
+  - asistente
+  - local
+  - privacidad
+  - llm
+  - voz
+  - cli
+  - ajolote
+ReleaseNotes: |-
+  Primera version de Itzel v0.1.0.
+  - Asistente IA local con backend Itzel-1B u Ollama
+  - Voz (Whisper.cpp STT + Kokoro-82M TTS)
+  - Sistema de skills: calculadora, portapapeles, busqueda web
+  - Cliente MCP para servidores de herramientas externos
+  - Base de datos SQLite cifrada (SQLCipher AES-256)
+  - App de escritorio Tauri 2 (Windows/macOS/Linux)
+ReleaseNotesUrl: https://github.com/BugCreator404/itzel/releases/tag/v0.1.0
+Documentations:
+  - DocumentLabel: Guia de instalacion
+    DocumentUrl: https://github.com/BugCreator404/itzel/blob/main/docs/INSTALL.md
+  - DocumentLabel: Contribuir
+    DocumentUrl: https://github.com/BugCreator404/itzel/blob/main/CONTRIBUTING.md
+ManifestType: locale
+ManifestVersion: 1.6.0

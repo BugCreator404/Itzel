@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json
+# Manifiesto raiz de WinGet para Itzel.
+#
+# Para actualizar a una nueva version:
+#   winget validate --manifest manifests\B\BugCreator404\itzel\<VERSION>\
+#   Luego abrir un PR al repo winget-pkgs de Microsoft.
+#
+# CI: .github/workflows/release.yml puede generar estos manifiestos
+#     automaticamente con `wingetcreate update`.
+
+PackageIdentifier: BugCreator404.itzel
+PackageVersion: 0.1.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

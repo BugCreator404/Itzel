@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+
+PackageIdentifier: BugCreator404.itzel
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: BugCreator404
+PublisherUrl: https://github.com/BugCreator404
+PublisherSupportUrl: https://github.com/BugCreator404/itzel/issues
+PrivacyUrl: https://github.com/BugCreator404/itzel#privacy
+Author: Edwin Yair Hernandez Limon
+PackageName: Itzel
+PackageUrl: https://github.com/BugCreator404/itzel
+License: MIT
+LicenseUrl: https://github.com/BugCreator404/itzel/blob/main/LICENSE
+Copyright: Copyright (c) 2025 Edwin Yair Hernandez Limon
+CopyrightUrl: https://github.com/BugCreator404/itzel/blob/main/LICENSE
+ShortDescription: Local-first personal AI assistant. No telemetry. No cloud.
+Description: |-
+  Itzel is a local-first personal AI assistant that runs entirely on your machine.
+  Powered by Itzel-1B (Qwen2.5 fine-tuned) or Ollama, it features voice input/output,
+  a pixel-art axolotl mascot, an extensible skill system, and MCP server support.
+
+  100% local. Zero telemetry. Zero data sent outside your machine.
+  Bilingual: Spanish (Mexico) first, English as fallback.
+Moniker: itzel
+Tags:
+  - ai
+  - assistant
+  - local
+  - privacy
+  - llm
+  - voice
+  - cli
+  - axolotl
+ReleaseNotes: |-
+  Initial release of Itzel v0.1.0.
+  - Local AI assistant with Itzel-1B or Ollama backend
+  - Voice input (Whisper.cpp) and output (Kokoro-82M TTS)
+  - Skill system with official skills: calculator, clipboard, web-search
+  - MCP client for external tool servers
+  - Encrypted SQLite database (SQLCipher AES-256)
+  - Tauri 2 desktop app (Windows/macOS/Linux)
+ReleaseNotesUrl: https://github.com/BugCreator404/itzel/releases/tag/v0.1.0
+Documentations:
+  - DocumentLabel: Installation Guide
+    DocumentUrl: https://github.com/BugCreator404/itzel/blob/main/docs/INSTALL.md
+  - DocumentLabel: Contributing
+    DocumentUrl: https://github.com/BugCreator404/itzel/blob/main/CONTRIBUTING.md
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
