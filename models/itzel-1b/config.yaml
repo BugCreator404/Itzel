@@ -1,0 +1,109 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  Itzel-1B — Configuración de fine-tuning                                   ║
+# ║  Única fuente de verdad: la leen train.py, evaluate.py y export_gguf.py.   ║
+# ║                                                                            ║
+# ║  ES: Cambia aquí los hiperparámetros — no los repitas en los scripts.      ║
+# ║  EN: Single source of truth. Edit hyperparameters here, not in scripts.    ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# ── Modelo base ───────────────────────────────────────────────────────────────
+model:
+  # Modelo base de Hugging Face. Itzel-1B parte de Qwen2.5-1.5B-Instruct.
+  # Base model on Hugging Face. Itzel-1B is fine-tuned from Qwen2.5-1.5B-Instruct.
+  base: "Qwen/Qwen2.5-1.5B-Instruct"
+  max_seq_length: 2048          # Longitud máxima de contexto en tokens
+  dtype: null                   # null = auto (bf16 si la GPU lo soporta, si no fp16)
+  load_in_4bit: true            # Cuantización 4-bit en entrenamiento (ahorra VRAM)
+
+# ── LoRA (adaptadores de bajo rango) ──────────────────────────────────────────
+lora:
+  r: 16                         # Rango de los adaptadores
+  alpha: 32                     # Escalado LoRA (regla común: alpha = 2 * r)
+  dropout: 0.0                  # 0.0 está optimizado en Unsloth
+  bias: "none"                  # No entrenar bias (más eficiente)
+  # Módulos objetivo: proyecciones de atención. Se pueden añadir las MLP
+  # (gate_proj, up_proj, down_proj) para mayor capacidad a costa de VRAM.
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+  use_gradient_checkpointing: "unsloth"   # "unsloth" | true | false
+  random_state: 3407            # Semilla para reproducibilidad
+
+# ── Entrenamiento ─────────────────────────────────────────────────────────────
+training:
+  output_dir: "outputs"         # Relativo a models/itzel-1b/
+  num_train_epochs: 3
+  per_device_train_batch_size: 2        # Pensado para GPU de 8 GB
+  gradient_accumulation_steps: 8        # Batch efectivo = 2 * 8 = 16
+  learning_rate: 2.0e-4
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  optim: "adamw_8bit"           # Optimizador de 8-bit (ahorra memoria)
+  logging_steps: 10
+  save_steps: 100               # Guarda checkpoint cada 100 pasos
+  save_total_limit: 3           # Conserva solo los 3 checkpoints más recientes
+  seed: 3407
+  # bf16/fp16 se autodetectan en train.py según la GPU; no fijar aquí.
+
+# ── Datos ─────────────────────────────────────────────────────────────────────
+data:
+  # Carpeta raíz de los datasets (relativa a la raíz del repo).
+  dataset_dir: "models/datasets"
+  # Categorías que se incluyen en el entrenamiento.
+  categories:
+    - productivity_es
+    - productivity_en
+    - system_control
+    - code_python
+    - conversation
+  train_split: 0.9              # 90% train / 10% validación
+  shuffle_seed: 42
+  # Archivos generados por prepare_data.py (relativos a dataset_dir):
+  prepared_train: "_prepared/train.jsonl"
+  prepared_val: "_prepared/val.jsonl"
+
+# ── Plantilla de chat ─────────────────────────────────────────────────────────
+chat:
+  # Qwen2.5 usa formato ChatML. El system prompt define la personalidad de Itzel.
+  # Qwen2.5 uses ChatML. The system prompt defines Itzel's persona.
+  template: "qwen-2.5"
+  system_prompt_es: >-
+    Eres Itzel, una asistente de IA personal que corre 100% local en la
+    computadora del usuario. Hablas español mexicano de forma cálida, clara y
+    directa. Priorizas la privacidad: nada sale del equipo. Confirmas antes de
+    cualquier acción irreversible.
+  system_prompt_en: >-
+    You are Itzel, a personal AI assistant running 100% locally on the user's
+    computer. You speak clearly and warmly. You prioritize privacy: nothing
+    leaves the device. You confirm before any irreversible action.
+
+# ── Evaluación ────────────────────────────────────────────────────────────────
+evaluation:
+  metrics:
+    - perplexity                # Perplejidad en validación ES-MX
+    - bleu                      # BLEU vs respuestas de referencia
+    - task_success              # Tasa de éxito en comandos del sistema
+    - cpu_latency               # Tiempo de respuesta en CPU
+  max_new_tokens: 256
+  cpu_latency_samples: 20       # Nº de prompts para medir latencia en CPU
+
+# ── Exportación a GGUF ────────────────────────────────────────────────────────
+export:
+  # Método de cuantización de llama.cpp. Q4_K_M = buen balance calidad/tamaño.
+  quantization: "Q4_K_M"
+  out_name: "itzel-1b"          # Genera itzel-1b-Q4_K_M.gguf
+  out_dir: "gguf"               # Relativo a models/itzel-1b/
+  # Ruta a llama.cpp; si es null, export_gguf.py la busca en PATH y ubicaciones
+  # comunes. Path to llama.cpp; if null, auto-detected.
+  llamacpp_dir: null
+
+# ── Hugging Face Hub ──────────────────────────────────────────────────────────
+huggingface:
+  repo_id: "BugCreator404/itzel-1b"
+  private: false
+  license: "apache-2.0"
+  # El token NUNCA va aquí. Se toma de la variable de entorno HF_TOKEN
+  # o del keychain del OS. The token is NEVER stored here.

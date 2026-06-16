@@ -35,6 +35,15 @@ models/itzel-7b/
 *.pt
 *.ckpt
 !models/itzel-1b/.gitkeep
+# Artefactos generados por el pipeline de fine-tuning (se regeneran)
+# prepare_data.py
+models/datasets/_prepared/
+# train.py: checkpoints, adapter, merged
+models/itzel-1b/outputs/
+# export_gguf.py: .gguf + .sha256
+models/itzel-1b/gguf/
+# upload_hf.py: generada desde config.yaml
+models/itzel-1b/MODEL_CARD.md
 
 # ─── BD y datos locales ──────────────────────────────────────────
 *.db

@@ -1,0 +1,35 @@
+# ── Itzel-1B — dependencias de entrenamiento / training dependencies ──────────
+# ES: Instala con:  pip install -r requirements-train.txt
+# EN: Install with: pip install -r requirements-train.txt
+#
+# La ruta rápida (Unsloth) es opcional y solo funciona en Linux + CUDA.
+# Si no la instalas, train.py usa automáticamente TRL + PEFT.
+
+# Núcleo / Core
+torch>=2.3
+transformers>=4.44
+datasets>=2.20
+peft>=0.12
+trl>=0.9
+accelerate>=0.33
+pyyaml>=6.0
+
+# Cuantización 4-bit en entrenamiento (GPU NVIDIA) / 4-bit training (NVIDIA)
+bitsandbytes>=0.43 ; platform_system != "Darwin"
+
+# Exportación a GGUF / GGUF export
+sentencepiece>=0.2
+protobuf>=4.25
+
+# Publicación en Hugging Face / Hub upload
+huggingface_hub>=0.24
+
+# Métricas opcionales / Optional metrics (evaluate.py cae a un BLEU propio si falta)
+sacrebleu>=2.4
+
+# Credenciales en keychain del OS / OS keychain (principio #8)
+keyring>=25.0
+
+# ── Ruta rápida opcional (Linux + CUDA) / Optional fast path ──────────────────
+# Descomenta si tienes GPU NVIDIA en Linux:
+# unsloth @ git+https://github.com/unslothai/unsloth.git
