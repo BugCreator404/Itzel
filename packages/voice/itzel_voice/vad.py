@@ -92,7 +92,8 @@ class VoiceActivityDetector:
 
         # Buffer de voz activa
         self._speech_buf: list[np.ndarray] = []
-        self._speech_samples  = 0
+        self._speech_samples  = 0   # total del buffer (voz + silencio final)
+        self._voice_samples   = 0   # SOLO chunks con voz — para min_speech_ms
         self._silence_samples = 0
 
         # Callbacks — el usuario los asigna directamente
@@ -200,6 +201,9 @@ class VoiceActivityDetector:
                 # Incluir el buffer pre-voz para no perder el inicio
                 self._speech_buf = list(self._pre_buf)
                 self._speech_samples  = len(self._speech_buf) * CHUNK_SAMPLES
+                # El pre-buffer es contexto previo (silencio); la voz real
+                # empieza con este chunk disparador.
+                self._voice_samples   = CHUNK_SAMPLES
                 self._silence_samples = 0
                 self._state = _State.SPEECH
                 self._pre_buf.clear()
@@ -213,6 +217,7 @@ class VoiceActivityDetector:
             self._speech_samples += CHUNK_SAMPLES
 
             if is_voice:
+                self._voice_samples += CHUNK_SAMPLES
                 self._silence_samples = 0
             else:
                 self._silence_samples += CHUNK_SAMPLES
@@ -228,19 +233,34 @@ class VoiceActivityDetector:
             ):
                 self._flush()
 
-    def _flush(self) -> None:
-        """Emite on_speech_end con el audio acumulado y resetea. Llamar con _lock."""
+    def _flush(self, *, enforce_min: bool = True) -> None:
+        """Emite on_speech_end con el audio acumulado y resetea. Llamar con _lock.
+
+        enforce_min: si True (cierre automático por silencio) descarta enunciados
+        con muy poca voz real. force_end() lo pasa en False: un cierre explícito
+        (soltar push-to-talk) captura aunque el usuario diga solo "sí" o "no".
+        When True (auto-close on silence) it drops too-short utterances; force_end
+        passes False so an explicit end always captures, even very short speech.
+        """
         if not self._speech_buf:
             self._reset_state()
             return
 
         audio = np.concatenate(self._speech_buf).astype(np.float32)
+        voice_samples = self._voice_samples   # capturar antes de resetear
         self._reset_state()
 
-        # Descartar enunciados muy cortos (tos, ruido puntual)
-        duration_ms = len(audio) / self.config.sample_rate * 1000
-        if duration_ms < self.config.min_speech_ms:
-            return
+        # Descartar enunciados con muy poca voz real (tos, click, ruido puntual).
+        # Medimos SOLO los chunks con voz, no len(audio): el buffer incluye el
+        # pre-buffer y el silencio final (~silence_trigger_ms), que harían que
+        # el umbral nunca descartara nada.
+        # Discard utterances with too little actual speech — measured from voice
+        # chunks only, not the full buffer (which carries pre-roll + trailing
+        # silence and would defeat the threshold).
+        if enforce_min:
+            voice_ms = voice_samples / self.config.sample_rate * 1000
+            if voice_ms < self.config.min_speech_ms:
+                return
 
         if self.on_speech_end is not None:
             # Copiar audio para no retener el buffer en memoria
@@ -256,6 +276,7 @@ class VoiceActivityDetector:
         self._state           = _State.IDLE
         self._speech_buf      = []
         self._speech_samples  = 0
+        self._voice_samples   = 0
         self._silence_samples = 0
         if self._model is not None:
             try:
@@ -272,7 +293,9 @@ class VoiceActivityDetector:
         """
         with self._lock:
             if self._state is _State.SPEECH:
-                self._flush()
+                # Cierre explícito → captura aunque la voz sea breve (no aplica
+                # el filtro de duración mínima, que es para ruidos involuntarios).
+                self._flush(enforce_min=False)
 
     def reset(self) -> None:
         """Cancela la captura actual y vuelve a IDLE (descarta el audio)."""

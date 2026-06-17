@@ -139,8 +139,9 @@ class TestPipelineMode:
             pipeline = VoicePipeline(cfg)
             pipeline.vad = loaded_vad
             pipeline.stt = loaded_stt
-            with pytest.warns(None):   # puede emitir un warning de log
-                pipeline.start()
+            # 'keyword' no implementado → fallback a 'always' con warning de log
+            # (no un warnings.warn de Python; pytest.warns(None) se eliminó en v8).
+            pipeline.start()
             # Debe arrancar en modo always (no lanza)
             assert pipeline.is_running is True
             pipeline.stop()
