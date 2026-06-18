@@ -22,7 +22,6 @@ import itzel_core.api.v1.chat as chat_mod
 from itzel_core.config import config
 from itzel_core.engine import app
 
-
 # ─── 1. helper _maybe_augment_with_rag ──────────────────────────────────────
 
 def test_augment_skips_when_rag_unavailable(monkeypatch):

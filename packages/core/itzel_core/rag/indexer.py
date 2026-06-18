@@ -34,11 +34,11 @@ from __future__ import annotations
 
 import fnmatch
 import threading
-import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any
 
 from ..logger import log_engine
 from .chunking import (
@@ -50,7 +50,7 @@ from .store import VectorStore, get_store
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # ─── progreso para la UI ───────────────────────────────────────────────────────
@@ -107,12 +107,12 @@ class IndexResult:
 class Indexer:
     """Indexa documentos de index_dirs en la base vectorial, de forma incremental."""
 
-    def __init__(self, store: Optional[VectorStore] = None) -> None:
+    def __init__(self, store: VectorStore | None = None) -> None:
         self._store = store
         self._lock = threading.Lock()
         self._progress = IndexProgress()
-        self._observer = None           # watchdog Observer (carga diferida)
-        self._debouncer: Optional[_Debouncer] = None
+        self._observer: Any = None      # watchdog Observer (carga diferida)
+        self._debouncer: _Debouncer | None = None
 
     # ── configuración (se re-lee en cada operación) ─────────────────────────────
 
@@ -148,7 +148,7 @@ class Indexer:
 
     # ── aislamiento y filtros ───────────────────────────────────────────────────
 
-    def _within_index_dirs(self, path: Path, dirs: list[Path]) -> Optional[Path]:
+    def _within_index_dirs(self, path: Path, dirs: list[Path]) -> Path | None:
         """Devuelve la carpeta-raíz que contiene `path`, o None si está fuera.
 
         Esta es la barrera de aislamiento: nada fuera de index_dirs se indexa.
@@ -289,7 +289,7 @@ class Indexer:
         self,
         force:       bool = False,
         prune:       bool = True,
-        progress_cb: Optional[Callable[[IndexProgress], None]] = None,
+        progress_cb: Callable[[IndexProgress], None] | None = None,
     ) -> IndexResult:
         """Escanea index_dirs y sincroniza el índice de forma incremental.
 
@@ -424,7 +424,7 @@ class _Debouncer:
         self._delay = delay_s
         self._callback = callback
         self._pending: dict[str, str] = {}   # path → último tipo de evento
-        self._timer: Optional[threading.Timer] = None
+        self._timer: threading.Timer | None = None
         self._lock = threading.Lock()
 
     def submit(self, path: str, event_type: str) -> None:
@@ -490,7 +490,7 @@ def _RAGEventHandler(debouncer: _Debouncer):
 def _iso_mtime(path: Path) -> str:
     try:
         return datetime.fromtimestamp(
-            path.stat().st_mtime, tz=timezone.utc
+            path.stat().st_mtime, tz=UTC
         ).isoformat()
     except OSError:
         return ""
@@ -506,7 +506,7 @@ def _epoch_mtime(path: Path) -> int:
 
 # ─── singleton ─────────────────────────────────────────────────────────────────
 
-_indexer: Optional[Indexer] = None
+_indexer: Indexer | None = None
 _indexer_lock = threading.Lock()
 
 

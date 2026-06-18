@@ -36,9 +36,9 @@ from __future__ import annotations
 
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..logger import log_engine
 from . import require_rag
@@ -54,7 +54,7 @@ os.environ.setdefault("CHROMA_TELEMETRY_ENABLED", "False")
 # ─── helpers ───────────────────────────────────────────────────────────────────
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def resolve_store_dir(store_dir: str) -> Path:
@@ -88,9 +88,9 @@ class VectorStore:
 
     def __init__(
         self,
-        store_dir:  Optional[str] = None,
-        collection: Optional[str] = None,
-        provider:   Optional[EmbeddingProvider] = None,
+        store_dir:  str | None = None,
+        collection: str | None = None,
+        provider:   EmbeddingProvider | None = None,
     ) -> None:
         require_rag()  # lanza RAGUnavailableError si falta chromadb
 
@@ -175,8 +175,8 @@ class VectorStore:
         self,
         ids:        list[str],
         documents:  list[str],
-        embeddings: Optional[list[list[float]]] = None,
-        metadatas:  Optional[list[dict[str, Any]]] = None,
+        embeddings: list[list[float]] | None = None,
+        metadatas:  list[dict[str, Any]] | None = None,
     ) -> None:
         """Inserta o actualiza fragmentos (upsert). Calcula embeddings si faltan."""
         if not ids:
@@ -210,7 +210,7 @@ class VectorStore:
         archivo, para decidir incrementalmente qué cambió."""
         res = self._collection.get(where={"source": source}, include=["metadatas"])
         out: dict[str, str] = {}
-        for cid, meta in zip(res.get("ids", []), res.get("metadatas", []) or []):
+        for cid, meta in zip(res.get("ids", []), res.get("metadatas", []) or [], strict=False):
             out[cid] = (meta or {}).get("content_hash", "")
         return out
 
@@ -218,7 +218,7 @@ class VectorStore:
         self,
         query_embedding: list[float],
         top_k:           int = 5,
-        where:           Optional[dict[str, Any]] = None,
+        where:           dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Búsqueda por similitud coseno. Devuelve hasta top_k resultados.
 
@@ -317,7 +317,7 @@ class VectorStore:
 
 # ─── singleton ─────────────────────────────────────────────────────────────────
 
-_store: Optional[VectorStore] = None
+_store: VectorStore | None = None
 _store_lock = threading.Lock()
 
 

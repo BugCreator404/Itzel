@@ -32,7 +32,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from ..logger import log_engine
 
@@ -83,7 +82,7 @@ def file_signature(path: Path) -> str:
 
 # ─── extracción de texto ───────────────────────────────────────────────────────
 
-def extract_text(path: Path) -> Optional[str]:
+def extract_text(path: Path) -> str | None:
     """Extrae el texto de un archivo soportado. None si no se pudo / no soportado.
 
     Las dependencias de PDF/DOCX son opcionales: si faltan, registra un aviso y
@@ -108,7 +107,7 @@ def extract_text(path: Path) -> Optional[str]:
     return None
 
 
-def _extract_pdf(path: Path) -> Optional[str]:
+def _extract_pdf(path: Path) -> str | None:
     """Texto de un PDF vía pypdf (opcional)."""
     try:
         from pypdf import PdfReader
@@ -124,7 +123,7 @@ def _extract_pdf(path: Path) -> Optional[str]:
     return "\n\n".join(pages).strip() or None
 
 
-def _extract_docx(path: Path) -> Optional[str]:
+def _extract_docx(path: Path) -> str | None:
     """Texto de un .docx vía python-docx (opcional)."""
     try:
         import docx  # python-docx
@@ -215,7 +214,7 @@ def read_and_chunk(
     path:           Path,
     chunk_size_tokens: int = 512,
     overlap_tokens:    int = 64,
-) -> tuple[Optional[str], list[Chunk]]:
+) -> tuple[str | None, list[Chunk]]:
     """Extrae y trocea un archivo. Devuelve (hash_del_texto, chunks).
 
     Si no se pudo extraer (no soportado / dep faltante / error), devuelve

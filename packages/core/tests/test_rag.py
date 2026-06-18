@@ -18,8 +18,8 @@ Si faltan las dependencias opcionales [rag], el módulo entero se omite.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import pytest
 
@@ -31,7 +31,6 @@ from itzel_core.rag.embeddings import OnnxEmbeddingProvider
 from itzel_core.rag.indexer import Indexer
 from itzel_core.rag.retriever import Retriever
 from itzel_core.rag.store import VectorStore
-
 
 # ─── fixtures ──────────────────────────────────────────────────────────────────
 

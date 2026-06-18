@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
@@ -72,11 +72,11 @@ class IndexStatus(BaseModel):
     enabled:      bool
     available:    bool
     missing_deps: list[str]
-    embed_model:  Optional[str] = None
-    embed_dim:    Optional[int] = None
+    embed_model:  str | None = None
+    embed_dim:    int | None = None
     documents:    int = 0
     chunks:       int = 0
-    store_path:   Optional[str] = None
+    store_path:   str | None = None
     telemetry:    str = "off"
     progress:     dict[str, Any] = {}
 
@@ -118,8 +118,8 @@ def rag_status() -> IndexStatus:
         return base
 
     try:
-        from ...rag.store import get_store
         from ...rag.indexer import get_indexer
+        from ...rag.store import get_store
         store = get_store()
         stats = store.stats()
         base.embed_model = stats["embed_model"]
@@ -217,8 +217,8 @@ def rag_progress() -> dict[str, Any]:
 def rag_search(
     q:          str = Query(..., description="Consulta en lenguaje natural"),
     top_k:      int = Query(5, ge=1, le=50),
-    file_types: Optional[str] = Query(None, description="Extensiones separadas por coma, ej: .md,.pdf"),
-    folder:     Optional[str] = Query(None),
+    file_types: str | None = Query(None, description="Extensiones separadas por coma, ej: .md,.pdf"),
+    folder:     str | None = Query(None),
 ) -> dict[str, Any]:
     """Búsqueda semántica en los documentos. Devuelve fragmentos con fuente."""
     _guard()
@@ -235,7 +235,7 @@ def rag_search(
 # ─── re-indexar (segundo plano) ─────────────────────────────────────────────────
 
 _reindex_lock = threading.Lock()
-_reindex_thread: Optional[threading.Thread] = None
+_reindex_thread: threading.Thread | None = None
 
 
 @router.post("/reindex", status_code=status.HTTP_202_ACCEPTED)

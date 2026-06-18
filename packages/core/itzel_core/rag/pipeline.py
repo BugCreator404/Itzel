@@ -35,11 +35,10 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from ..logger import log_engine
 from .retriever import RetrievedChunk, Retriever, get_retriever
-
 
 # ─── contexto recuperado ───────────────────────────────────────────────────────
 
@@ -80,7 +79,7 @@ class RAGAnswer:
 
 # ─── textos bilingües ──────────────────────────────────────────────────────────
 
-def _is_spanish(language: Optional[str]) -> bool:
+def _is_spanish(language: str | None) -> bool:
     return (language or "es").lower().startswith("es")
 
 
@@ -113,7 +112,7 @@ _NO_CONTEXT_EN = "(I found no relevant documents in your index for this query.)"
 class RAGPipeline:
     """Orquesta recuperación + ensamblado de contexto + citación."""
 
-    def __init__(self, retriever: Optional[Retriever] = None) -> None:
+    def __init__(self, retriever: Retriever | None = None) -> None:
         self._retriever = retriever
 
     @property
@@ -131,7 +130,7 @@ class RAGPipeline:
     def retrieve(
         self,
         query:    str,
-        language: Optional[str] = None,
+        language: str | None = None,
         **filters: Any,
     ) -> RetrievalContext:
         """Recupera fragmentos y arma el bloque de contexto numerado + fuentes."""
@@ -209,7 +208,7 @@ class RAGPipeline:
     def augment_messages(
         self,
         messages: list[dict[str, str]],
-        language: Optional[str] = None,
+        language: str | None = None,
         **filters: Any,
     ) -> tuple[list[dict[str, str]], RetrievalContext]:
         """Inyecta contexto de documentos en el último turno de usuario.
@@ -251,7 +250,7 @@ class RAGPipeline:
     async def answer(
         self,
         query:    str,
-        language: Optional[str] = None,
+        language: str | None = None,
         adapter:  Any = None,
         **filters: Any,
     ) -> RAGAnswer:
@@ -328,7 +327,7 @@ class RAGPipeline:
 
 # ─── singleton ─────────────────────────────────────────────────────────────────
 
-_pipeline: Optional[RAGPipeline] = None
+_pipeline: RAGPipeline | None = None
 _pipeline_lock = threading.Lock()
 
 

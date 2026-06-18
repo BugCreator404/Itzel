@@ -222,7 +222,7 @@ def _save_default_config(cfg: ItzelConfig) -> None:
         json.dump(cfg.model_dump(), f, indent=2, ensure_ascii=False)
 
 
-def save_config(cfg: Optional[ItzelConfig] = None) -> Path:
+def save_config(cfg: ItzelConfig | None = None) -> Path:
     """Persiste la config (la global por defecto) en ~/.itzel/itzel.config.json.
 
     Respeta el primer archivo de config existente si hay uno en el proyecto;

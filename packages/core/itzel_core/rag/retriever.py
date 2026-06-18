@@ -28,15 +28,15 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from .chunking import CHARS_PER_TOKEN
 from .store import VectorStore, get_store
 
 
-def _to_epoch(value: Union[str, int, float, None]) -> Optional[int]:
+def _to_epoch(value: str | int | float | None) -> int | None:
     """Normaliza una fecha (ISO string o epoch) a epoch int. None si no aplica."""
     if value is None:
         return None
@@ -46,7 +46,7 @@ def _to_epoch(value: Union[str, int, float, None]) -> Optional[int]:
         # Acepta 'YYYY-MM-DD' o ISO completo, con o sin zona.
         dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return int(dt.timestamp())
     except ValueError:
         return None
@@ -87,7 +87,7 @@ class RetrievedChunk:
 class Retriever:
     """Búsqueda semántica top-K con filtros sobre el índice vectorial."""
 
-    def __init__(self, store: Optional[VectorStore] = None) -> None:
+    def __init__(self, store: VectorStore | None = None) -> None:
         self._store = store
 
     @property
@@ -104,10 +104,10 @@ class Retriever:
 
     @staticmethod
     def _build_where(
-        file_types:     Optional[list[str]],
-        modified_after: Optional[str],
-        modified_before: Optional[str],
-    ) -> Optional[dict[str, Any]]:
+        file_types:     list[str] | None,
+        modified_after: str | None,
+        modified_before: str | None,
+    ) -> dict[str, Any] | None:
         """Arma el filtro `where` de ChromaDB. None si no hay condiciones."""
         clauses: list[dict[str, Any]] = []
 
@@ -135,12 +135,12 @@ class Retriever:
     def search(
         self,
         query:           str,
-        top_k:           Optional[int] = None,
-        file_types:      Optional[list[str]] = None,
-        folder:          Optional[str] = None,
-        modified_after:  Optional[str] = None,
-        modified_before: Optional[str] = None,
-        min_score:       Optional[float] = None,
+        top_k:           int | None = None,
+        file_types:      list[str] | None = None,
+        folder:          str | None = None,
+        modified_after:  str | None = None,
+        modified_before: str | None = None,
+        min_score:       float | None = None,
     ) -> list[RetrievedChunk]:
         """Devuelve los fragmentos más relevantes para `query`.
 
@@ -197,7 +197,7 @@ class Retriever:
     # ── helpers de filtro por carpeta ───────────────────────────────────────────
 
     @staticmethod
-    def _resolve_folder(folder: Optional[str]) -> Optional[str]:
+    def _resolve_folder(folder: str | None) -> str | None:
         if not folder:
             return None
         try:
@@ -256,7 +256,7 @@ class Retriever:
 
 # ─── singleton ─────────────────────────────────────────────────────────────────
 
-_retriever: Optional[Retriever] = None
+_retriever: Retriever | None = None
 _retriever_lock = threading.Lock()
 
 

@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import threading
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import httpx
 
@@ -79,7 +78,7 @@ class EmbeddingProvider(ABC):
         return self.embed_documents([text])[0]
 
     # almacenamiento de la dimensión detectada
-    _dim: Optional[int] = None
+    _dim: int | None = None
 
 
 # ─── proveedor 1: Ollama ──────────────────────────────────────────────────────
@@ -195,7 +194,7 @@ class OnnxEmbeddingProvider(EmbeddingProvider):
 
 # ─── fábrica con fallback ──────────────────────────────────────────────────────
 
-def _build_provider(spec: str) -> Optional[EmbeddingProvider]:
+def _build_provider(spec: str) -> EmbeddingProvider | None:
     """Construye un proveedor desde un string de config.
 
     'ollama:nomic-embed-text' → OllamaEmbeddingProvider('nomic-embed-text')
@@ -211,7 +210,7 @@ def _build_provider(spec: str) -> Optional[EmbeddingProvider]:
     return None
 
 
-_provider: Optional[EmbeddingProvider] = None
+_provider: EmbeddingProvider | None = None
 _provider_lock = threading.Lock()
 
 
