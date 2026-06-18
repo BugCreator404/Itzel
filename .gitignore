@@ -5,6 +5,10 @@ dist/
 *.tsbuildinfo
 .turbo/
 
+# Reportes de cobertura (los genera vitest/pytest; el CI los sube como artefacto)
+coverage/
+coverage.xml
+
 # ─── Python ─────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
