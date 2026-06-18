@@ -11,7 +11,6 @@ Muestra el estado real de todos los componentes de Itzel:
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 
 import httpx
@@ -116,8 +115,8 @@ def _count_memory_entries() -> int:
     try:
         from itzel_core.memory import MemoryStore
         store = MemoryStore()
-        result = store._conn.execute("SELECT COUNT(*) FROM messages").fetchone()
-        return result[0] if result else 0
+        result = store._db.query_one("SELECT COUNT(*) FROM messages")
+        return int(result[0]) if result else 0
     except Exception:
         return -1   # -1 = no disponible
 

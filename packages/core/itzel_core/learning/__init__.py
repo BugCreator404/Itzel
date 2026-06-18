@@ -9,10 +9,10 @@ EN: On-device personal learning. Adapts Itzel to each user from their
 """
 
 from .personal_trainer import (
-    PersonalTrainer,
     LearningState,
-    record_correction,
+    PersonalTrainer,
     get_learning_summary,
+    record_correction,
 )
 
 __all__ = [

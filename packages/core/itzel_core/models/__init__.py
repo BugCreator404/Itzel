@@ -22,7 +22,7 @@ cada request. Llama a `reset_adapter()` si quieres forzar re-detección
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from ..logger import log_engine
 from .base import (

@@ -12,11 +12,9 @@ El endpoint de chat solo necesita importar este módulo.
 
 from __future__ import annotations
 
-import locale
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 
 from .config import config
 from .models import get_adapter, reset_adapter
@@ -24,7 +22,7 @@ from .models.base import BaseAdapter, GenerationParams, Message
 
 # ─── enums (sin cambios — backward compat) ───────────────────────────────────
 
-class TaskType(str, Enum):
+class TaskType(StrEnum):
     CHAT      = "chat"
     CODE      = "code"
     SUMMARIZE = "summarize"
@@ -33,7 +31,7 @@ class TaskType(str, Enum):
     VOICE     = "voice"
 
 
-class ModelBackend(str, Enum):
+class ModelBackend(StrEnum):
     ITZEL_1B  = "itzel-1b"
     ITZEL_7B  = "itzel-7b"
     OLLAMA    = "ollama"
@@ -52,7 +50,7 @@ TASK_MODEL_MAP: dict[TaskType, ModelBackend] = {
 }
 
 
-def select_model(task: TaskType, override: Optional[str] = None) -> ModelBackend:
+def select_model(task: TaskType, override: str | None = None) -> ModelBackend:
     """
     Devuelve el backend preferido para una tarea.
     Siempre prefiere modelos locales; nube solo con config explícita.
@@ -110,7 +108,7 @@ def build_system_prompt(
     path  = _PROMPTS_DIR / f"system_{lang}.txt"
     text  = path.read_text(encoding="utf-8")
 
-    now   = datetime.now(timezone.utc)
+    now   = datetime.now(UTC)
     date_str = _format_date(now, lang)
 
     lang_label = "Español (México)" if lang == "es-MX" else "English (US)"

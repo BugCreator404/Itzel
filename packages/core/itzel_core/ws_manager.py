@@ -14,7 +14,7 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 from .logger import log_ws
 

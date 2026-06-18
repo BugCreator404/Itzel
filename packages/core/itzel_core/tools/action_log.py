@@ -30,9 +30,9 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .base import ActionRequest, ToolResult
 
@@ -49,7 +49,7 @@ _TARGET_KEYS = ("path", "src", "source", "dst", "dest", "name", "app", "query")
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 def _extract_target(args: dict[str, Any]) -> str:
@@ -79,7 +79,7 @@ class ActionLogger:
         registry = ToolRegistry(agent_name="file", action_sink=logger)
     """
 
-    def __init__(self, log_file: Optional[Path] = None) -> None:
+    def __init__(self, log_file: Path | None = None) -> None:
         self.log_file = log_file or _LOG_FILE
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()

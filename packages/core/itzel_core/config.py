@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Ruta por orden de prioridad: proyecto local → home del usuario
 _CONFIG_PATHS = [
@@ -54,7 +53,7 @@ class RateLimitConfig(BaseModel):
 
 class DBConfig(BaseModel):
     # Ruta de la BD cifrada (None = ~/.itzel/memory.db por defecto en db.py).
-    path: Optional[str] = None
+    path: str | None = None
     wal: bool = True                       # WAL mode para concurrencia
     backup_dir: str = "data/backups"       # destino de los backups cifrados
     backup_weekly: bool = True             # backup automático semanal
@@ -78,8 +77,8 @@ class MCPServerConfig(BaseModel):
     del OS bajo el servicio 'itzel', usuario 'mcp-<name>' (principio #8)."""
     name: str
     transport: Literal["sse", "stdio"] = "sse"
-    url: Optional[str] = None              # requerido para transport="sse"
-    command: Optional[str] = None          # requerido para transport="stdio"
+    url: str | None = None              # requerido para transport="sse"
+    command: str | None = None          # requerido para transport="stdio"
     args: list[str] = Field(default_factory=list)
     auth: Literal["none", "api_key"] = "none"
     enabled: bool = True

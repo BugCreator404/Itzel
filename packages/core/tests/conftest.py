@@ -8,8 +8,8 @@ una clave fija sobre un archivo temporal.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import pytest
 

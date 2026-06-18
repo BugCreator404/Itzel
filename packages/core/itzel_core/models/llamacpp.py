@@ -28,8 +28,8 @@ import asyncio
 import concurrent.futures
 import importlib
 import os
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator
 
 from ..config import config
 from ..logger import log_engine

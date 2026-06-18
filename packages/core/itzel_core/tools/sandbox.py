@@ -33,7 +33,6 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 # resource solo existe en POSIX (Linux/macOS)
 try:
@@ -89,7 +88,7 @@ class SandboxRunner:
         timeout:       int = 30,
         ram_mb:        int = 512,
         allow_network: bool = False,
-        python_exe:    Optional[str] = None,
+        python_exe:    str | None = None,
     ) -> None:
         self.timeout       = timeout
         self.ram_mb        = ram_mb
@@ -102,7 +101,7 @@ class SandboxRunner:
         self,
         code:    str,
         *,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ) -> SandboxResult:
         """
         Ejecuta `code` como un script de Python aislado.
@@ -124,8 +123,8 @@ class SandboxRunner:
         self,
         argv:    list[str],
         *,
-        timeout: Optional[int] = None,
-        stdin:   Optional[str] = None,
+        timeout: int | None = None,
+        stdin:   str | None = None,
     ) -> SandboxResult:
         """
         Ejecuta una lista de argumentos directamente (sin shell).
@@ -145,8 +144,8 @@ class SandboxRunner:
         self,
         argv:    list[str],
         workdir: Path,
-        timeout: Optional[int],
-        stdin:   Optional[str] = None,
+        timeout: int | None,
+        stdin:   str | None = None,
     ) -> SandboxResult:
         """
         Ejecuta argv con límites; nunca lanza — devuelve SandboxResult.

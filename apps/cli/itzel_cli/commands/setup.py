@@ -122,7 +122,7 @@ def _check_environment() -> bool:
     # Crear directorios ~/.itzel/
     for d in [_HOME_DIR, _MODELS_DIR, _LOGS_DIR]:
         d.mkdir(parents=True, exist_ok=True)
-    ok(f"Directorio ~/.itzel/ listo")
+    ok("Directorio ~/.itzel/ listo")
 
     # httpx (requerido siempre)
     try:
@@ -182,7 +182,7 @@ def _choose_backend() -> str:
 
     options = []
     if ollama_available:
-        console.print(f"  [bold #4ecdc4]1[/] Ollama [dim](detectado, ya corriendo)[/]")
+        console.print("  [bold #4ecdc4]1[/] Ollama [dim](detectado, ya corriendo)[/]")
         options.append(("1", "ollama"))
     if llamacpp_possible:
         console.print(f"  [bold #4ecdc4]{len(options)+1}[/] llama.cpp  [dim](local puro, sin dependencias externas)[/]")
@@ -221,7 +221,6 @@ def _setup_model(backend: str) -> None:
 
 def _setup_ollama_model() -> None:
     """Verifica qué modelos hay en Ollama y ofrece descargar uno."""
-    from ..client import _list_ollama_models  # type: ignore[attr-defined]
 
     # Intentar importar el helper de model.py
     try:
@@ -254,7 +253,7 @@ def _setup_ollama_model() -> None:
     console.print("[dim](esto puede tardar varios minutos según tu conexión)[/]\n")
 
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["ollama", "pull", model_id],
             check=True,
         )
@@ -304,12 +303,10 @@ def _setup_llamacpp_model() -> None:
             hint("Luego descarga: itzel model pull itzel-1b")
             return
 
-    # Delegar al comando model pull
-    from .model import pull as model_pull
-    typer_ctx = typer.Context(typer.Command("pull"))
-    # Invocar sin el runner para que imprima directamente
+    # Delegar al comando model pull — invocamos _pull_from_hf directamente
+    # para que imprima en la consola actual (sin el runner de typer).
     try:
-        from .model import _pull_from_hf, _CATALOG
+        from .model import _CATALOG, _pull_from_hf
         meta = _CATALOG["itzel-1b"]
         _pull_from_hf(meta, dest)
     except Exception as exc:

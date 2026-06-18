@@ -8,20 +8,16 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Optional
 
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.text import Text
 
-from ..client import BackendOfflineError, BackendError, ItzelClient
+from ..client import BackendError, BackendOfflineError, ItzelClient
 from ..output import (
     console,
     err,
-    hint,
-    print_markdown,
     print_token,
-    streaming_response,
     warn,
 )
 
@@ -30,7 +26,7 @@ def run(
     question:   str,
     json_output: bool = False,
     quiet:      bool = False,
-    model_name: Optional[str] = None,
+    model_name: str | None = None,
 ) -> None:
     """
     Envía una pregunta al backend y transmite la respuesta en tiempo real.
@@ -86,14 +82,14 @@ def run(
 
     # ── Modo streaming ────────────────────────────────────────────────────────
     if not quiet:
-        console.print(f"\n[bold #f9a8d4]Itzel[/] [#9890b8]→[/] ", end="")
+        console.print("\n[bold #f9a8d4]Itzel[/] [#9890b8]→[/] ", end="")
 
     tokens: list[str] = []
     first_token = True
 
     try:
         # Spinner "Pensando…" hasta que llega el primer token
-        spinner_live: Optional[Live] = None
+        spinner_live: Live | None = None
         if not quiet and sys.stdout.isatty():
             spinner_live = Live(
                 Spinner("dots", text=Text("Pensando…", style="#9890b8")),

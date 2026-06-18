@@ -26,7 +26,6 @@ import ast
 import json
 import re
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 

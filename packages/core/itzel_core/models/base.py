@@ -17,9 +17,8 @@ Formato de mensajes (compatible con OpenAI / Ollama / llama-cpp-python):
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import AsyncGenerator
-
 
 # ─── tipos públicos ───────────────────────────────────────────────────────────
 
@@ -31,7 +30,7 @@ class GenerationParams:
     max_tokens:   int   = 2048
     stop:         list[str] = field(default_factory=list)
 
-    def clamp(self) -> "GenerationParams":
+    def clamp(self) -> GenerationParams:
         """Asegura que los valores estén en rangos válidos."""
         return GenerationParams(
             temperature = max(0.0, min(2.0, self.temperature)),

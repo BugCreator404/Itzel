@@ -1,7 +1,7 @@
 """Tests para el endpoint /api/v1/health."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from itzel_core.engine import app
 

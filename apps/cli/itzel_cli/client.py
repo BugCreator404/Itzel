@@ -23,7 +23,7 @@ import os
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import httpx
@@ -102,10 +102,11 @@ class ItzelClient:
     Los métodos normales lanzan BackendOfflineError / BackendError.
     """
 
-    def __init__(self, base_url: Optional[str] = None) -> None:
+    def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (
             base_url
-            or os.getenv("ITZEL_BACKEND_URL", _DEFAULT_BASE_URL)
+            or os.getenv("ITZEL_BACKEND_URL")
+            or _DEFAULT_BASE_URL
         ).rstrip("/")
 
         self._timeout = httpx.Timeout(
@@ -157,8 +158,8 @@ class ItzelClient:
     def stream_chat(
         self,
         message:    str,
-        session_id: Optional[str] = None,
-        language:   Optional[str] = None,
+        session_id: str | None = None,
+        language:   str | None = None,
     ) -> Iterator[str]:
         """
         Envía un mensaje al endpoint /api/v1/chat/ y devuelve un iterador
@@ -203,16 +204,16 @@ class ItzelClient:
 
         except (BackendOfflineError, BackendError):
             raise
-        except httpx.ConnectError:
-            raise BackendOfflineError(self.base_url)
+        except httpx.ConnectError as exc:
+            raise BackendOfflineError(self.base_url) from exc
         except httpx.TimeoutException as exc:
             raise BackendError(0, f"Timeout esperando respuesta: {exc}") from exc
 
     def chat_sync(
         self,
         message:    str,
-        session_id: Optional[str] = None,
-        language:   Optional[str] = None,
+        session_id: str | None = None,
+        language:   str | None = None,
     ) -> str:
         """
         Versión no-streaming de chat. Acumula todos los tokens y devuelve
@@ -280,10 +281,10 @@ class ItzelClient:
         try:
             from itzel_core.memory import MemoryStore
             store = MemoryStore()
-            rows  = store._conn.execute(
-                "SELECT id,role,content,session_id,created_at,metadata "
+            rows  = store._db.query(
+                "SELECT id,role,content,conversation_id,created_at,metadata "
                 "FROM messages ORDER BY created_at"
-            ).fetchall()
+            )
             return [
                 {
                     "id": r[0], "role": r[1], "content": r[2],
@@ -300,9 +301,9 @@ class ItzelClient:
         try:
             from itzel_core.memory import MemoryStore
             store = MemoryStore()
-            count = store._conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+            row = store._db.query_one("SELECT COUNT(*) FROM messages")
             store.clear()
-            return count  # type: ignore[no-any-return]
+            return int(row[0]) if row else 0
         except ImportError:
             return 0
 

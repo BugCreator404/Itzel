@@ -11,7 +11,6 @@ import time
 
 from itzel_core.cache import ResponseCache
 
-
 # ─── claves ───────────────────────────────────────────────────────────────────
 
 class TestMakeKey:

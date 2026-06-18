@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -20,7 +19,6 @@ from ..client import BackendError, BackendOfflineError, ItzelClient
 from ..output import (
     confirm,
     console,
-    download_progress,
     err,
     hint,
     info,
@@ -124,10 +122,6 @@ def list_models() -> None:
     # Modelos Ollama
     if alive:
         try:
-            from ..client import OllamaAdapter  # type: ignore[attr-defined]
-        except ImportError:
-            pass
-        try:
             ollama_models = _list_ollama_models()
             for om in ollama_models:
                 table.add_row(
@@ -219,16 +213,16 @@ def _pull_from_hf(meta: dict, dest: Path) -> None:
             tmp_path.unlink(missing_ok=True)
         err(f"Error al descargar: {exc}")
         _show_manual_download_instructions("", meta, dest)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 def _show_manual_download_instructions(name: str, meta: dict, dest: Path) -> None:
     """Muestra instrucciones para descarga manual cuando huggingface_hub no está."""
     console.print(
-        f"\n[bold #fbbf24]huggingface_hub no instalado.[/] "
+        "\n[bold #fbbf24]huggingface_hub no instalado.[/] "
         "Descarga el modelo manualmente:\n"
     )
-    console.print(f"  [#4ecdc4]pip install huggingface_hub[/]")
+    console.print("  [#4ecdc4]pip install huggingface_hub[/]")
     console.print(
         f"  [#4ecdc4]huggingface-cli download {meta['hf_repo']} "
         f"{meta['hf_filename']} --local-dir ~/.itzel/models/[/]"
@@ -256,10 +250,10 @@ def use(
             "Backend offline.",
             hint="Inicia el backend primero con: itzel setup",
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except BackendError as exc:
         err(f"No se pudo cambiar el modelo: {exc.detail}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 # ─── remove ───────────────────────────────────────────────────────────────────
@@ -295,7 +289,7 @@ def remove(
 
 @app.command("info")
 def info_cmd(
-    name: Optional[str] = typer.Argument(None, help="ID del modelo (default: activo)"),
+    name: str | None = typer.Argument(None, help="ID del modelo (default: activo)"),
 ) -> None:
     """Muestra información detallada de un modelo."""
     client = ItzelClient()
@@ -331,7 +325,7 @@ def info_cmd(
             size_real = gguf.stat().st_size // (1024 * 1024)
             info(f"En disco:     {gguf} ({size_real} MB)")
         else:
-            info(f"En disco:     [dim]no descargado[/]")
+            info("En disco:     [dim]no descargado[/]")
     else:
         info(f"Modelo Ollama — gestiona con: ollama show {name}")
 

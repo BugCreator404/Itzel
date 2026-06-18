@@ -9,19 +9,17 @@ Todos los tests corren sin modelos reales instalados:
 
 from __future__ import annotations
 
-import asyncio
-import importlib
 import json
-from pathlib import Path
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from itzel_core.models import (
+    LlamaCppAdapter,
     NoModelAdapter,
     OllamaAdapter,
-    LlamaCppAdapter,
     get_adapter,
     reset_adapter,
 )
@@ -32,7 +30,6 @@ from itzel_core.models.base import (
     ModelNotAvailableError,
 )
 from itzel_core.router import build_messages, build_system_prompt
-
 
 # ─── fixtures ─────────────────────────────────────────────────────────────────
 
@@ -467,11 +464,11 @@ class TestRouter:
             assert "Itzel" in prompt
 
     def test_build_system_prompt_contains_date(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
         prompt = build_system_prompt(
             session_id="x", model_name="m", language="es-MX"
         )
-        year = str(datetime.now(timezone.utc).year)
+        year = str(datetime.now(UTC).year)
         assert year in prompt
 
     def test_build_messages_structure(self):

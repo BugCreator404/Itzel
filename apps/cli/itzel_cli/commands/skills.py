@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -126,7 +125,7 @@ def create(
         skill_dir = sk.create_skill(name, base_dir=_COMMUNITY, author=author)
     except (ValueError, FileExistsError) as exc:
         err(str(exc))
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     ok(f"Skill creada en {skill_dir}")
     info("Archivos: skill.json · handler.py · README.md")
@@ -183,7 +182,7 @@ def install(
         return
 
     local = Path(source).expanduser()
-    cloned_tmp: Optional[Path] = None
+    cloned_tmp: Path | None = None
 
     try:
         # ── origen: GitHub ────────────────────────────────────────────
@@ -211,7 +210,7 @@ def install(
             manifest = sk.load_manifest(local)
         except sk.ManifestError as exc:
             err(f"La carpeta no es una skill válida: {exc}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
         dest = _COMMUNITY / manifest.name
         if dest.exists():
@@ -251,7 +250,7 @@ def install(
             shutil.rmtree(cloned_tmp, ignore_errors=True)
 
 
-def _normalize_github(source: str) -> Optional[str]:
+def _normalize_github(source: str) -> str | None:
     """'owner/repo' o URL de GitHub → URL clonable; None si no aplica."""
     s = source.strip().rstrip("/")
     if s.startswith(("https://github.com/", "git@github.com:")):

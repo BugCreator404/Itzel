@@ -26,9 +26,11 @@ from __future__ import annotations
 
 import inspect
 import threading
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, get_args, get_origin, get_type_hints
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
+from dataclasses import dataclass
+from typing import Any, get_args, get_origin, get_type_hints
 
 # ─── mapeo de tipos Python → JSON Schema ──────────────────────────────────────
 
@@ -95,19 +97,19 @@ class ToolResult:
     """
     ok:     bool
     value:  Any = None
-    error:  Optional[str] = None
+    error:  str | None = None
     denied: bool = False
 
     @classmethod
-    def success(cls, value: Any = None) -> "ToolResult":
+    def success(cls, value: Any = None) -> ToolResult:
         return cls(ok=True, value=value)
 
     @classmethod
-    def failure(cls, error: str) -> "ToolResult":
+    def failure(cls, error: str) -> ToolResult:
         return cls(ok=False, error=error)
 
     @classmethod
-    def rejected(cls, error: str = "Acción no confirmada por el usuario.") -> "ToolResult":
+    def rejected(cls, error: str = "Acción no confirmada por el usuario.") -> ToolResult:
         return cls(ok=False, error=error, denied=True)
 
 
@@ -141,10 +143,10 @@ class Tool:
         description:            str,
         *,
         confirm_if_irreversible: bool = False,
-        confirm_when:            Optional[Callable[[dict[str, Any]], bool]] = None,
+        confirm_when:            Callable[[dict[str, Any]], bool] | None = None,
         sandbox:                 bool = False,
         timeout:                 int = 30,
-        param_docs:              Optional[dict[str, str]] = None,
+        param_docs:              dict[str, str] | None = None,
     ) -> None:
         self.func                    = func
         self.name                    = name
@@ -262,14 +264,14 @@ class Tool:
 # ─── decorador @tool ──────────────────────────────────────────────────────────
 
 def tool(
-    name:                    Optional[str] = None,
+    name:                    str | None = None,
     description:             str = "",
     *,
     confirm_if_irreversible: bool = False,
-    confirm_when:            Optional[Callable[[dict[str, Any]], bool]] = None,
+    confirm_when:            Callable[[dict[str, Any]], bool] | None = None,
     sandbox:                 bool = False,
     timeout:                 int = 30,
-    param_docs:              Optional[dict[str, str]] = None,
+    param_docs:              dict[str, str] | None = None,
 ) -> Callable[[Callable[..., Any]], Tool]:
     """
     Convierte una función en una Tool invocable por el LLM.
@@ -327,8 +329,8 @@ class ToolRegistry:
         self,
         *,
         agent_name:      str = "",
-        confirm_handler: Optional[ConfirmHandler] = None,
-        action_sink:     Optional[ActionSink] = None,
+        confirm_handler: ConfirmHandler | None = None,
+        action_sink:     ActionSink | None = None,
     ) -> None:
         self._tools: dict[str, Tool] = {}
         # Nombre del agente dueño de este registry (para auditoría).
@@ -354,7 +356,7 @@ class ToolRegistry:
         for t in tools:
             self.register(t)
 
-    def get(self, name: str) -> Optional[Tool]:
+    def get(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
     def __contains__(self, name: str) -> bool:
@@ -373,7 +375,7 @@ class ToolRegistry:
 
     # ── invocación orquestada ─────────────────────────────────────────────────
 
-    def invoke(self, name: str, args: Optional[dict[str, Any]] = None) -> ToolResult:
+    def invoke(self, name: str, args: dict[str, Any] | None = None) -> ToolResult:
         """
         Ejecuta una tool por nombre con sus argumentos.
 

@@ -7,7 +7,6 @@ conversaciones y la memoria episódica (resúmenes automáticos + contexto).
 
 from __future__ import annotations
 
-
 # ─── historial ────────────────────────────────────────────────────────────────
 
 class TestHistory:

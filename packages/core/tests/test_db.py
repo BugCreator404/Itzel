@@ -10,9 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
-from itzel_core.db import Database, _HAS_CIPHER
 from sqlcipher3 import dbapi2 as sqlcipher
+
+from itzel_core.db import _HAS_CIPHER, Database
 
 # Clave de prueba fija (igual que en conftest.py).
 TEST_KEY = "0123456789abcdef" * 4
@@ -39,7 +39,7 @@ class TestSchema:
 
     def test_role_check_constraint(self, mem_db):
         mem_db.execute("INSERT INTO conversations VALUES('c1','t','t','m','es','t')")
-        with pytest.raises(Exception):
+        with pytest.raises(sqlcipher.DatabaseError):
             mem_db.execute(
                 "INSERT INTO messages VALUES('m1','c1','INVALID','x','t',0,'{}')"
             )
@@ -87,7 +87,7 @@ class TestEncryption:
         db.execute("INSERT INTO user_preferences VALUES('x','y','t')")
         db.close()
 
-        with pytest.raises(Exception):
+        with pytest.raises(sqlcipher.DatabaseError):
             bad = Database(path=path, key="f" * 64)
             bad.query("SELECT * FROM user_preferences")
 

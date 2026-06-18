@@ -17,9 +17,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
-
-import typer
 
 from ..output import confirm, console, err, hint, info, ok, warn
 
@@ -225,7 +222,7 @@ def _cli_installed() -> bool:
     return _find_cli_path() is not None
 
 
-def _find_cli_path() -> Optional[str]:
+def _find_cli_path() -> str | None:
     """Devuelve la ruta al binario de itzel, o None si no se encuentra."""
     import shutil as _shutil
     return _shutil.which("itzel")

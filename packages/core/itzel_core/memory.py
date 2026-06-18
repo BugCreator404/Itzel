@@ -19,8 +19,8 @@ English summary:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Callable, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -30,7 +30,7 @@ from .db import Database, get_db
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _estimate_tokens(text: str) -> int:
@@ -54,7 +54,7 @@ class ConversationSummary(BaseModel):
     id: str
     conversation_id: str
     summary: str
-    up_to_message_id: Optional[str]
+    up_to_message_id: str | None
     token_count: int
     created_at: str
 
@@ -74,7 +74,7 @@ class MemoryStore:
         mem = MemoryStore(db=Database(":memory:", key=None))
     """
 
-    def __init__(self, db: Optional[Database] = None) -> None:
+    def __init__(self, db: Database | None = None) -> None:
         self._db = db or get_db()
 
     # ── conversaciones ────────────────────────────────────────────────────────
@@ -82,8 +82,8 @@ class MemoryStore:
     def _ensure_conversation(
         self,
         session_id: str,
-        model:      Optional[str] = None,
-        language:   Optional[str] = None,
+        model:      str | None = None,
+        language:   str | None = None,
     ) -> None:
         """Crea la conversación si no existe; si existe, actualiza updated_at."""
         now = _now()
@@ -114,7 +114,7 @@ class MemoryStore:
         role:        str,
         content:     str,
         session_id:  str,
-        metadata:    Optional[dict] = None,
+        metadata:    dict | None = None,
         tokens_used: int = 0,
     ) -> MemoryEntry:
         """Guarda un mensaje, creando la conversación si hace falta."""
@@ -188,7 +188,7 @@ class MemoryStore:
         )
         return int(row["total"]) if row else 0
 
-    def get_latest_summary(self, session_id: str) -> Optional[ConversationSummary]:
+    def get_latest_summary(self, session_id: str) -> ConversationSummary | None:
         """Devuelve el resumen más reciente de la conversación, o None."""
         row = self._db.query_one(
             "SELECT id, conversation_id, summary, up_to_message_id, token_count, created_at "
@@ -212,8 +212,8 @@ class MemoryStore:
         session_id: str,
         summarizer: Callable[[str], str],
         *,
-        threshold:  Optional[int] = None,
-    ) -> Optional[ConversationSummary]:
+        threshold:  int | None = None,
+    ) -> ConversationSummary | None:
         """
         Genera un resumen si la conversación supera el umbral de tokens.
 
@@ -288,8 +288,8 @@ class MemoryStore:
     def _messages_after(
         self,
         session_id: str,
-        after:      Optional[ConversationSummary],
-        limit:      Optional[int] = None,
+        after:      ConversationSummary | None,
+        limit:      int | None = None,
     ) -> list[MemoryEntry]:
         """Mensajes posteriores al resumen `after` (o todos si es None)."""
         if after is not None and after.up_to_message_id:

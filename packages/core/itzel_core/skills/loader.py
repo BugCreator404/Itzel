@@ -33,12 +33,12 @@ import inspect
 import logging
 import sys
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from ..tools import Tool
-
 from .manifest import ManifestError, SkillManifest, check_permissions, load_manifest
 
 log = logging.getLogger("itzel.skills")
@@ -101,9 +101,9 @@ class SkillLoader:
 
     def __init__(
         self,
-        dirs:     Optional[list[Path]] = None,
+        dirs:     list[Path] | None = None,
         *,
-        disabled: Optional[set[str]] = None,
+        disabled: set[str] | None = None,
     ) -> None:
         self.dirs     = dirs if dirs is not None else default_skill_dirs()
         self.disabled = disabled or set()
@@ -165,7 +165,7 @@ class SkillLoader:
         """Tools de todas las skills cargadas — para registrar en el engine."""
         return [s.tool for s in self.skills.values()]
 
-    def get(self, name: str) -> Optional[LoadedSkill]:
+    def get(self, name: str) -> LoadedSkill | None:
         return self.skills.get(name)
 
     def match_trigger(self, text: str) -> list[LoadedSkill]:

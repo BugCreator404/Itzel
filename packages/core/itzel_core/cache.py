@@ -25,15 +25,14 @@ import hashlib
 import json
 import threading
 from collections import OrderedDict
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
 
 from .config import config
 from .db import Database, get_db
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(dt: datetime) -> str:
@@ -57,11 +56,11 @@ class ResponseCache:
 
     def __init__(
         self,
-        db:      Optional[Database] = None,
+        db:      Database | None = None,
         *,
-        l1_max:  Optional[int] = None,
-        l2_ttl_s: Optional[int] = None,
-        enabled: Optional[bool] = None,
+        l1_max:  int | None = None,
+        l2_ttl_s: int | None = None,
+        enabled: bool | None = None,
     ) -> None:
         self._db      = db or get_db()
         self._l1_max  = l1_max if l1_max is not None else config.cache.l1_max
@@ -69,13 +68,13 @@ class ResponseCache:
         self.enabled  = enabled if enabled is not None else config.cache.enabled
 
         # L1 guarda (valor, expires_at_iso) para respetar el TTL en memoria.
-        self._l1: "OrderedDict[str, tuple[str, str]]" = OrderedDict()
+        self._l1: OrderedDict[str, tuple[str, str]] = OrderedDict()
         self._lock = threading.Lock()
 
     # ── claves ────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def make_key(prompt: str, *, model: str, params: Optional[dict] = None) -> str:
+    def make_key(prompt: str, *, model: str, params: dict | None = None) -> str:
         """Deriva una clave estable de prompt + modelo + parámetros."""
         payload = json.dumps(
             {"prompt": prompt, "model": model, "params": params or {}},
@@ -86,7 +85,7 @@ class ResponseCache:
 
     # ── lectura ───────────────────────────────────────────────────────────────
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         """Devuelve el valor cacheado (L1 o L2 no expirado), o None."""
         if not self.enabled:
             return None
@@ -120,7 +119,7 @@ class ResponseCache:
 
     # ── escritura ─────────────────────────────────────────────────────────────
 
-    def set(self, key: str, value: str, *, ttl_s: Optional[int] = None) -> None:
+    def set(self, key: str, value: str, *, ttl_s: int | None = None) -> None:
         """Guarda un valor en L1 y L2 con su TTL."""
         if not self.enabled:
             return
