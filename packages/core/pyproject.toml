@@ -20,6 +20,10 @@ dependencies = [
   "python-jose[cryptography]>=3.3.0",
   "httpx>=0.27.0",
   "aiofiles>=24.1.0",
+  # El router de voz (api/v1/voice.py) procesa audio PCM con numpy y el engine
+  # siempre lo monta, así que numpy es dependencia de runtime del core.
+  # The voice router handles PCM audio with numpy and is always mounted.
+  "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
