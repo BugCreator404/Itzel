@@ -272,18 +272,26 @@ class TestTTSSpeak:
         assert loaded_tts._model.call_count == 2
 
     def test_volume_zero_produces_silence(self, loaded_tts, mock_sd_for_tts):
-        """volume=0.0 produce audio de amplitud cero."""
+        """volume=0.0 silencia la salida: aunque el modelo genere audio con
+        amplitud, lo que se escribe al stream es todo ceros (audio * 0)."""
         loaded_tts.config.volume = 0.0
-        written_data: list[np.ndarray] = []
 
-        orig_play = loaded_tts._play_audio
-        def _capturing_play(audio, interrupt_on):
-            written_data.append(audio.copy())
-            return orig_play(audio, interrupt_on)
+        # El modelo emite audio NO silencioso a propósito, para probar que el
+        # silencio viene del escalado por volume=0 y no de un mock que ya da
+        # ceros. The model emits non-silent audio so the test proves the
+        # silence comes from the volume scaling, not from a zero-filled mock.
+        loud = np.ones(int(24_000 * 0.1), dtype=np.float32)
+        loaded_tts._model.side_effect = (
+            lambda text, voice="ef_dora", speed=1.0: iter([("", "", loud)])
+        )
 
-        loaded_tts._play_audio = _capturing_play
         loaded_tts.speak("Texto.")
-        assert all(np.all(d == 0.0) for d in written_data)
+
+        # _generate_and_play() escala por volume y escribe en sub-chunks al
+        # OutputStream; capturamos lo realmente escrito al hardware (mock).
+        written = mock_sd_for_tts.OutputStream.last.written
+        assert written, "no se escribió nada al stream de salida"
+        assert all(np.all(chunk == 0.0) for chunk in written)
 
 
 # ─── speak_stream() ───────────────────────────────────────────────────────────

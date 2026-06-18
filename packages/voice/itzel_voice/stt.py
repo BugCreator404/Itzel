@@ -271,6 +271,13 @@ def _prepare_audio(audio: np.ndarray) -> np.ndarray:
     """
     audio = np.asarray(audio, dtype=np.float32).ravel()
 
+    # Un array vacío (chunk de micrófono sin muestras) pasa de largo.
+    # Sin este guard, np.abs(...).max() revienta: "zero-size array to
+    # reduction operation maximum which has no identity".
+    # An empty array (mic chunk with no samples) passes through untouched.
+    if audio.size == 0:
+        return audio
+
     # Normalizar si hay clipping (amplitud > 1.0)
     max_val = np.abs(audio).max()
     if max_val > 1.0:
