@@ -21,9 +21,8 @@ Uso:
 
 from __future__ import annotations
 
-import sys
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, Optional
 
 import typer
 from rich.console import Console
@@ -58,7 +57,7 @@ def ok(msg: str) -> None:
     console.print(f"[bold #4ecdc4]✓[/] {msg}")
 
 
-def err(msg: str, hint: Optional[str] = None) -> None:
+def err(msg: str, hint: str | None = None) -> None:
     """Mensaje de error en stderr. Si se pasa hint, lo imprime en lila."""
     err_console.print(f"[bold #f87171]✗ Error:[/] {msg}")
     if hint:
@@ -97,7 +96,7 @@ def exit_offline(base_url: str = "http://127.0.0.1:7432") -> None:
     raise typer.Exit(1)
 
 
-def exit_error(msg: str, hint_msg: Optional[str] = None) -> None:
+def exit_error(msg: str, hint_msg: str | None = None) -> None:
     """Imprime error y termina con código 1."""
     err(msg, hint=hint_msg)
     raise typer.Exit(1)

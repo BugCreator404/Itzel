@@ -28,13 +28,11 @@ Uso / Usage:
 
 from __future__ import annotations
 
-import bisect
-import math
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 # Importación diferida de psutil — opcional, no bloquea si no está instalado.
 # Deferred import of psutil — optional, does not block if not installed.
@@ -308,7 +306,7 @@ class MetricsCollector:
 
 # ─── singleton global ─────────────────────────────────────────────────────────
 
-_collector: Optional[MetricsCollector] = None
+_collector: MetricsCollector | None = None
 _collector_lock = threading.Lock()
 
 

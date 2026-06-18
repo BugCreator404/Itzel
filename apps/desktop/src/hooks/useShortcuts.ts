@@ -74,6 +74,5 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
       unlisten?.();
     };
     // Solo se suscribe una vez — los handlers se actualizan vía ref
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

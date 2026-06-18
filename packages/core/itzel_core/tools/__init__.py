@@ -32,7 +32,6 @@ from .base import (
     ActionRequest,
     ActionSink,
     ConfirmationDenied,
-    ConfirmHandler as ConfirmHandlerType,
     SandboxViolation,
     Tool,
     ToolError,
@@ -40,6 +39,9 @@ from .base import (
     ToolRegistry,
     ToolResult,
     tool,
+)
+from .base import (
+    ConfirmHandler as ConfirmHandlerType,
 )
 from .confirm import (
     AutoConfirmHandler,

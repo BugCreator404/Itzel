@@ -8,14 +8,14 @@ solo la lógica de programación semanal.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from itzel_core import backup as backup_mod
 from itzel_core.backup import auto_backup_if_due, export_backup, import_backup
-from itzel_core.db import Database, _HAS_CIPHER
+from itzel_core.db import _HAS_CIPHER, Database
 
 TEST_KEY   = "0123456789abcdef" * 4   # clave "origen"
 LOCAL_KEY  = "fedcba9876543210" * 4   # clave "local" de la máquina destino
@@ -103,7 +103,7 @@ class TestAutoBackup:
         monkeypatch.setattr(backup_mod, "export_backup",
                             lambda *a, **k: calls.append(1) or Path("/fake/bak.db.enc"))
         # Registrar un backup reciente (ayer).
-        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        yesterday = (datetime.now(UTC) - timedelta(days=1)).isoformat()
         mem_db.execute(
             "INSERT INTO user_preferences VALUES('last_auto_backup', ?, ?)",
             (yesterday, yesterday),
@@ -116,7 +116,7 @@ class TestAutoBackup:
         calls = []
         monkeypatch.setattr(backup_mod, "export_backup",
                             lambda *a, **k: calls.append(1) or Path("/fake/bak.db.enc"))
-        old = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+        old = (datetime.now(UTC) - timedelta(days=8)).isoformat()
         mem_db.execute(
             "INSERT INTO user_preferences VALUES('last_auto_backup', ?, ?)",
             (old, old),

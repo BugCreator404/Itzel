@@ -25,8 +25,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from .db import Database, get_db
@@ -38,7 +38,7 @@ _TARGET_KEYS = ("path", "src", "source", "dst", "dest", "name", "app", "query")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _extract_target(args: dict[str, Any]) -> str:
@@ -64,7 +64,7 @@ class DBActionSink:
         registry = ToolRegistry(action_sink=DBActionSink())
     """
 
-    def __init__(self, db: Optional[Database] = None) -> None:
+    def __init__(self, db: Database | None = None) -> None:
         self._db = db or get_db()
 
     def __call__(self, request: ActionRequest, result: ToolResult) -> None:
@@ -108,10 +108,10 @@ def combined_sink(*sinks: ActionSink) -> ActionSink:
 # ─── consulta ─────────────────────────────────────────────────────────────────
 
 def get_actions(
-    db:    Optional[Database] = None,
+    db:    Database | None = None,
     *,
     limit: int = 50,
-    agent: Optional[str] = None,
+    agent: str | None = None,
 ) -> list[dict]:
     """
     Devuelve las últimas acciones registradas en la BD, más recientes primero.

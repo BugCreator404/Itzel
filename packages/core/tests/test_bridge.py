@@ -10,7 +10,6 @@ from httpx import ASGITransport, AsyncClient
 from itzel_core.engine import app
 from itzel_core.ws_manager import WsMessage, ws_manager
 
-
 # ── WsMessage helpers ─────────────────────────────────────────────────────
 
 def test_ws_message_make_has_required_fields():

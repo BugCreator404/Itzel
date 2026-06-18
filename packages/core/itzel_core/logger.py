@@ -32,7 +32,7 @@ import logging
 import logging.handlers
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +82,7 @@ class _JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry: dict[str, Any] = {
-            "ts":     datetime.now(timezone.utc).isoformat(),
+            "ts":     datetime.now(UTC).isoformat(),
             "level":  record.levelname,
             "logger": record.name,
             "msg":    record.getMessage(),

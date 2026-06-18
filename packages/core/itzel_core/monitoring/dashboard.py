@@ -20,15 +20,14 @@ from __future__ import annotations
 import asyncio
 import json
 import platform
-import time
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator
 
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
+from ..monitoring.alerts import _disk_free_gb, get_alert_manager
 from ..monitoring.metrics import get_collector
-from ..monitoring.alerts import get_alert_manager, _disk_free_gb
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 

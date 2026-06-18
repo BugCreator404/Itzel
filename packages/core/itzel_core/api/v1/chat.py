@@ -16,7 +16,7 @@ Flujo completo:
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -43,8 +43,8 @@ _memory = MemoryStore()
 
 class ChatRequest(BaseModel):
     message:    str
-    session_id: Optional[str] = None
-    language:   Optional[str] = None   # "es-MX" | "en-US"; default de config
+    session_id: str | None = None
+    language:   str | None = None   # "es-MX" | "en-US"; default de config
     stream:     bool = True
 
 

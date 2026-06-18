@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -18,8 +17,8 @@ CONFIG_PATH = Path.home() / ".itzel" / "itzel.config.json"
 @app.callback(invoke_without_command=True)
 def config_main(
     ctx: typer.Context,
-    key: Optional[str] = typer.Argument(None, help="Clave de configuración (ej: voice.enabled)"),
-    value: Optional[str] = typer.Argument(None, help="Nuevo valor"),
+    key: str | None = typer.Argument(None, help="Clave de configuración (ej: voice.enabled)"),
+    value: str | None = typer.Argument(None, help="Nuevo valor"),
 ) -> None:
     """Ver y editar la configuración sin tocar el JSON directamente."""
     if ctx.invoked_subcommand:

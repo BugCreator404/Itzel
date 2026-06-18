@@ -23,7 +23,8 @@ from __future__ import annotations
 import sys
 import threading
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from ..i18n.i18n import T
 from .base import ActionRequest
@@ -122,7 +123,9 @@ class TerminalConfirmHandler(ConfirmHandler):
 
     def __call__(self, request: ActionRequest) -> bool:
         msg = describe_action(request, self.lang)
-        strings = _PROMPT[self.lang]
+        # _PROMPT mezcla str y list[str] por idioma; Any evita que mypy infiera
+        # Collection[str] y se queje al usar .format() o pasarlo como str.
+        strings: dict[str, Any] = _PROMPT[self.lang]
 
         self._print_fn(msg)
         answer = self._read_with_timeout(strings["ask"])
@@ -138,7 +141,7 @@ class TerminalConfirmHandler(ConfirmHandler):
 
     # ── lectura con timeout (cross-platform) ──────────────────────────────────
 
-    def _read_with_timeout(self, prompt: str) -> Optional[str]:
+    def _read_with_timeout(self, prompt: str) -> str | None:
         """
         Lee una línea de stdin con timeout.
 
@@ -146,7 +149,7 @@ class TerminalConfirmHandler(ConfirmHandler):
         no funciona sobre stdin en Windows. Si el thread sigue bloqueado tras
         el timeout, devolvemos None (el daemon muere con el proceso).
         """
-        result: list[Optional[str]] = [None]
+        result: list[str | None] = [None]
 
         def _reader() -> None:
             try:

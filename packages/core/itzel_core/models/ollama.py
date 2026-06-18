@@ -17,7 +17,7 @@ Modelos recomendados:
 from __future__ import annotations
 
 import json
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import httpx
 
@@ -161,12 +161,12 @@ class OllamaAdapter(BaseAdapter):
 
         except ModelNotAvailableError:
             raise
-        except httpx.ConnectError:
-            raise ModelNotAvailableError("ollama", hint=_INSTALL_HINT)
+        except httpx.ConnectError as exc:
+            raise ModelNotAvailableError("ollama", hint=_INSTALL_HINT) from exc
         except httpx.TimeoutException as exc:
-            raise GenerationError("ollama", f"Timeout: {exc}")
+            raise GenerationError("ollama", f"Timeout: {exc}") from exc
         except Exception as exc:
-            raise GenerationError("ollama", str(exc))
+            raise GenerationError("ollama", str(exc)) from exc
 
     # ── metadata ──────────────────────────────────────────────────────────────
 

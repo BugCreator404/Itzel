@@ -15,13 +15,8 @@ Archivos descargados en ~/.itzel/models/whisper/<tamaño>/
 
 from __future__ import annotations
 
-import sys
 import threading
 import time
-from typing import Optional
-
-from rich.columns import Columns
-from rich.text import Text
 
 from ..output import (
     console,
@@ -50,7 +45,7 @@ _ITZEL_LABEL   = "[bold #9890b8]itzel[/]"
 def run(
     model:    str           = "small",
     mode:     str           = "always",
-    device:   Optional[int] = None,
+    device:   int | None = None,
     language: str           = "es",
     download: bool          = False,
 ) -> None:
@@ -66,10 +61,10 @@ def run(
     """
     # ── Verificar dependencias ────────────────────────────────────────────────
     try:
-        from itzel_voice import check_dependencies, require_full_install
+        from itzel_voice import check_dependencies
         from itzel_voice.pipeline import PipelineConfig, VoicePipeline
-        from itzel_voice.stt     import STTConfig, SpeechToText, download_model
-        from itzel_voice.vad     import VADConfig
+        from itzel_voice.stt import SpeechToText, STTConfig
+        from itzel_voice.vad import VADConfig
     except ImportError:
         err(
             "El paquete itzel-voice no está instalado.",
@@ -157,15 +152,17 @@ def run(
             _cur_state[0] = s
 
     # Callbacks del pipeline → imprimir en consola
-    pipeline.on_listening_start = lambda: (
-        _set_state("listening"),
-        console.print(f"\n{_ST_LISTEN}", end="\r"),
-    )
+    def _on_listening_start() -> None:
+        _set_state("listening")
+        console.print(f"\n{_ST_LISTEN}", end="\r")
 
-    pipeline.on_listening_end = lambda: (
-        _set_state("processing"),
-        console.print(f"{_ST_PROCESS}          ", end="\r"),
-    )
+    pipeline.on_listening_start = _on_listening_start
+
+    def _on_listening_end() -> None:
+        _set_state("processing")
+        console.print(f"{_ST_PROCESS}          ", end="\r")
+
+    pipeline.on_listening_end = _on_listening_end
 
     def _on_transcript(text: str, lang: str) -> None:
         _set_state("idle")
@@ -188,17 +185,19 @@ def run(
 
     pipeline.on_error = _on_error
 
-    pipeline.on_speaking_start = lambda: (
-        _set_state("speaking"),
-        console.print(f"\r{' ' * 30}\r", end=""),
-        console.print(f"{_ST_SPEAKING}", end="\r"),
-    )
+    def _on_speaking_start() -> None:
+        _set_state("speaking")
+        console.print(f"\r{' ' * 30}\r", end="")
+        console.print(f"{_ST_SPEAKING}", end="\r")
 
-    pipeline.on_speaking_end = lambda: (
-        _set_state("idle"),
-        console.print(f"\r{' ' * 30}\r", end=""),
-        console.print(_ST_IDLE, end="\r"),
-    )
+    pipeline.on_speaking_start = _on_speaking_start
+
+    def _on_speaking_end() -> None:
+        _set_state("idle")
+        console.print(f"\r{' ' * 30}\r", end="")
+        console.print(_ST_IDLE, end="\r")
+
+    pipeline.on_speaking_end = _on_speaking_end
 
     def _on_interrupted() -> None:
         _set_state("idle")

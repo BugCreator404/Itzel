@@ -13,16 +13,10 @@ Comandos especiales dentro del chat:
 
 from __future__ import annotations
 
-import sys
-from typing import Optional
-
-from rich.rule import Rule
-
 from ..client import BackendError, BackendOfflineError, ItzelClient
 from ..output import (
     console,
     err,
-    hint,
     info,
     ok,
     print_header,
@@ -48,8 +42,8 @@ _HELP_TEXT = """\
 # ─── punto de entrada ─────────────────────────────────────────────────────────
 
 def run(
-    context:    Optional[str] = None,
-    model_name: Optional[str] = None,
+    context:    str | None = None,
+    model_name: str | None = None,
     new_session: bool = False,
 ) -> None:
     """

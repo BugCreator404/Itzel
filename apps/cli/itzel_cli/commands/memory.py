@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -46,8 +45,8 @@ _DB_PATH = Path.home() / ".itzel" / "memory.db"
 def search(
     query:   str = typer.Argument(..., help="Texto a buscar en la memoria"),
     limit:   int = typer.Option(20, "--limit", "-n", help="Máximo de resultados"),
-    session: Optional[str] = typer.Option(None, "--session", "-s", help="Filtrar por session_id"),
-    role:    Optional[str] = typer.Option(None, "--role", "-r", help="Filtrar por rol: user | assistant"),
+    session: str | None = typer.Option(None, "--session", "-s", help="Filtrar por session_id"),
+    role:    str | None = typer.Option(None, "--role", "-r", help="Filtrar por rol: user | assistant"),
 ) -> None:
     """Busca en la memoria por texto."""
     store = _open_store()
@@ -142,7 +141,7 @@ def list_sessions(
 @app.command("clear")
 def clear(
     yes:     bool = typer.Option(False, "--yes", "-y", help="Sin confirmación"),
-    session: Optional[str] = typer.Option(None, "--session", "-s", help="Borrar solo esta sesión"),
+    session: str | None = typer.Option(None, "--session", "-s", help="Borrar solo esta sesión"),
 ) -> None:
     """Borra la memoria (toda o una conversación específica)."""
     store = _open_store()
@@ -187,7 +186,7 @@ def clear(
 @app.command("export")
 def export(
     path:    str  = typer.Argument("itzel_memory.json", help="Ruta del archivo de salida"),
-    session: Optional[str] = typer.Option(None, "--session", "-s", help="Exportar solo esta sesión"),
+    session: str | None = typer.Option(None, "--session", "-s", help="Exportar solo esta sesión"),
     pretty:  bool = typer.Option(True, "--pretty/--compact", help="JSON formateado o compacto"),
 ) -> None:
     """Exporta la memoria a un archivo JSON legible (requiere backend)."""
@@ -214,15 +213,15 @@ def export(
         ok(f"Exportados {len(records)} mensajes a: {output_path.resolve()}")
     except OSError as exc:
         err(f"No se pudo escribir el archivo: {exc}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 # ─── backup (cifrado portable .db.enc) ────────────────────────────────────────
 
 @app.command("backup")
 def backup(
-    path: Optional[str] = typer.Argument(None, help="Ruta del backup (.db.enc). Default: data/backups/"),
-    passphrase: Optional[str] = typer.Option(
+    path: str | None = typer.Argument(None, help="Ruta del backup (.db.enc). Default: data/backups/"),
+    passphrase: str | None = typer.Option(
         None, "--passphrase", "-p",
         help="Passphrase para cifrar el backup portable (recomendado)",
         prompt="Passphrase para el backup (vacío = clave local, NO portable)",
@@ -242,7 +241,7 @@ def backup(
         out = export_backup(dest, passphrase=pw)
     except Exception as exc:
         err(f"No se pudo crear el backup: {exc}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     portable = "portable (passphrase)" if pw else "local (clave del keychain)"
     ok(f"Backup creado: {out}")
@@ -256,7 +255,7 @@ def backup(
 @app.command("restore")
 def restore(
     archivo: str = typer.Argument(..., help="Archivo .db.enc a restaurar"),
-    passphrase: Optional[str] = typer.Option(
+    passphrase: str | None = typer.Option(
         None, "--passphrase", "-p",
         help="Passphrase con que se cifró el backup",
         prompt="Passphrase del backup (vacío = clave local)",
@@ -286,10 +285,10 @@ def restore(
         import_backup(src, passphrase=passphrase or None)
     except ValueError as exc:
         err(str(exc))
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except Exception as exc:
         err(f"No se pudo restaurar: {exc}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     ok("Memoria restaurada desde el backup.")
     hint("La memoria anterior quedó en ~/.itzel/memory.db.pre-import-bak")
@@ -337,7 +336,7 @@ def stats() -> None:
 @app.command("actions")
 def actions(
     limit: int = typer.Option(30, "--limit", "-n", help="Máximo de acciones"),
-    agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Filtrar por agente"),
+    agent: str | None = typer.Option(None, "--agent", "-a", help="Filtrar por agente"),
 ) -> None:
     """Muestra el historial de acciones de los agentes (auditoría)."""
     try:
@@ -396,7 +395,7 @@ def _open_store():
         return None
 
 
-def _fmt_date(iso: Optional[str]) -> str:
+def _fmt_date(iso: str | None) -> str:
     """Formatea ISO datetime a formato legible corto en hora local."""
     if not iso:
         return "—"

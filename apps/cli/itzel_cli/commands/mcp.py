@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -70,7 +69,7 @@ def _servers(data: dict) -> list[dict]:
     return data.setdefault("mcp_servers", [])
 
 
-def _find(servers: list[dict], name: str) -> Optional[dict]:
+def _find(servers: list[dict], name: str) -> dict | None:
     return next((s for s in servers if s.get("name") == name), None)
 
 
@@ -79,9 +78,9 @@ def _find(servers: list[dict], name: str) -> Optional[dict]:
 @app.command("add")
 def add(
     name:    str = typer.Argument(..., help="Nombre del servidor MCP"),
-    url:     Optional[str] = typer.Option(None, "--url",     "-u", help="URL del servidor (transport SSE)"),
-    command: Optional[str] = typer.Option(None, "--command", "-c", help="Comando local (transport stdio)"),
-    args:    Optional[str] = typer.Option(None, "--args",          help="Argumentos del comando, separados por coma"),
+    url:     str | None = typer.Option(None, "--url",     "-u", help="URL del servidor (transport SSE)"),
+    command: str | None = typer.Option(None, "--command", "-c", help="Comando local (transport stdio)"),
+    args:    str | None = typer.Option(None, "--args",          help="Argumentos del comando, separados por coma"),
     key:     bool = typer.Option(False, "--key", "-k", help="Pedir y guardar una API key en el keychain"),
 ) -> None:
     """Agrega un servidor MCP a itzel.config.json."""
@@ -107,7 +106,7 @@ def add(
         pass  # sin core instalado, guardamos igual (el engine validará)
     except Exception as exc:
         err(f"Configuración inválida: {exc}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     data = _read_config()
     servers = _servers(data)
@@ -186,7 +185,7 @@ def test(name: str = typer.Argument(..., help="Servidor a probar")) -> None:
         from itzel_mcp import MCPClient, MCPNotAvailableError
     except ImportError:
         err("itzel-mcp no está instalado.", hint="pip install -e packages/mcp")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     cfg = MCPServerConfig.model_validate(entry)
     info(f"Conectando a '{name}' ({cfg.transport})…")
@@ -197,10 +196,10 @@ def test(name: str = typer.Argument(..., help="Servidor a probar")) -> None:
         tools = client.list_tools()
     except MCPNotAvailableError as exc:
         err(str(exc))
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except Exception as exc:
         err(f"Conexión fallida: {exc}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     finally:
         client.close()
 

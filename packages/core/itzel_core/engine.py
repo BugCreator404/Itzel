@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,12 +22,10 @@ from .api.v1 import chat, health, models, status, voice
 from .api.v1 import websocket as ws_route
 from .config import config
 from .logger import log_engine
-from .monitoring.dashboard import router as dashboard_router
 from .middleware import AgentTimeoutMiddleware, RequestLoggerMiddleware
 from .models import get_adapter
 from .models.base import ModelNotAvailableError
-from .rate_limiter import RateLimiter
-from .ws_manager import ws_manager
+from .monitoring.dashboard import router as dashboard_router
 
 _IS_DEV   = os.getenv("ITZEL_ENV", "development") != "production"
 _START_TS = time.time()

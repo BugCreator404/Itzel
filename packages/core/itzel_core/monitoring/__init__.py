@@ -8,8 +8,8 @@ EN: All monitoring is 100% local. No data leaves the machine. When disabled,
     the collector is a no-op and the dashboard returns 503.
 """
 
-from .metrics import MetricsCollector, get_collector
 from .alerts import AlertManager, get_alert_manager
+from .metrics import MetricsCollector, get_collector
 
 __all__ = [
     "MetricsCollector",

@@ -22,9 +22,8 @@ English summary:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 try:
     from sqlcipher3 import dbapi2 as sqlite  # type: ignore
@@ -42,7 +41,7 @@ _BACKUP_PREF_KEY = "last_auto_backup"   # clave en user_preferences
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _backup_dir() -> Path:
@@ -58,11 +57,11 @@ def _backup_dir() -> Path:
 # ─── export ───────────────────────────────────────────────────────────────────
 
 def export_backup(
-    dest:       Optional[Path] = None,
+    dest:       Path | None = None,
     *,
-    passphrase: Optional[str] = None,
+    passphrase: str | None = None,
     db_path:    Path = DB_PATH,
-    src_key:    Optional[str] = "__auto__",
+    src_key:    str | None = "__auto__",
 ) -> Path:
     """
     Exporta la BD a un archivo .db.enc portable.
@@ -102,7 +101,7 @@ def export_backup(
             conn.execute(f"PRAGMA key = '{src_key.replace(chr(39), chr(39)*2)}'")
             conn.execute("SELECT count(*) FROM sqlite_master")  # fuerza descifrado
         dest.unlink(missing_ok=True)
-        safe_out = out_key.replace("'", "''")
+        safe_out = (out_key or "").replace("'", "''")
         safe_dest = str(dest).replace("'", "''")
         conn.execute(f"ATTACH DATABASE '{safe_dest}' AS bak KEY '{safe_out}'")
         conn.execute("SELECT sqlcipher_export('bak')")
@@ -121,9 +120,9 @@ def export_backup(
 def import_backup(
     src:        Path,
     *,
-    passphrase: Optional[str] = None,
+    passphrase: str | None = None,
     db_path:    Path = DB_PATH,
-    local_key:  Optional[str] = "__auto__",
+    local_key:  str | None = "__auto__",
 ) -> Path:
     """
     Restaura un backup .db.enc, reemplazando la BD actual.
@@ -201,7 +200,7 @@ def import_backup(
 
 # ─── backup automático semanal ────────────────────────────────────────────────
 
-def auto_backup_if_due(db: Optional[Database] = None) -> Optional[Path]:
+def auto_backup_if_due(db: Database | None = None) -> Path | None:
     """
     Crea un backup si pasó una semana desde el último (o si nunca hubo).
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
@@ -74,7 +73,7 @@ class ModelSwitchResponse(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-def _is_downloaded(filename: Optional[str]) -> bool:
+def _is_downloaded(filename: str | None) -> bool:
     if not filename:
         return False
     return (_MODELS_DIR / filename).exists()

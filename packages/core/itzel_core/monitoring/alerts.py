@@ -36,8 +36,7 @@ import platform
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger("itzel.alerts")
 
@@ -217,7 +216,7 @@ class AlertManager:
         with self._lock:
             self._consecutive_errors = 0
 
-    def check_disk(self, free_gb: Optional[float] = None) -> bool:
+    def check_disk(self, free_gb: float | None = None) -> bool:
         """Dispara alerta si el disco libre cae bajo el umbral.
 
         Si free_gb es None, lo mide con shutil (sin psutil).
@@ -258,7 +257,7 @@ class AlertManager:
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
-def _disk_free_gb() -> Optional[float]:
+def _disk_free_gb() -> float | None:
     """Espacio libre en el home del usuario (GB). Sin psutil."""
     try:
         import shutil
@@ -271,7 +270,7 @@ def _disk_free_gb() -> Optional[float]:
 
 # ─── singleton global ─────────────────────────────────────────────────────────
 
-_manager: Optional[AlertManager] = None
+_manager: AlertManager | None = None
 _manager_lock = threading.Lock()
 
 

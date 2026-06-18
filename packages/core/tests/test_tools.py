@@ -10,7 +10,6 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
@@ -28,7 +27,6 @@ from itzel_core.tools import (
     describe_action,
     tool,
 )
-
 
 # ─── @tool y esquemas ─────────────────────────────────────────────────────────
 
@@ -61,7 +59,7 @@ class TestToolSchema:
 
     def test_optional_type_unwraps_to_inner(self):
         @tool("t", "t")
-        def t(x: Optional[int] = None) -> None:
+        def t(x: int | None = None) -> None:
             ...
 
         props = t.to_schema()["input_schema"]["properties"]

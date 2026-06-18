@@ -74,7 +74,7 @@ class AgentTimeoutMiddleware(BaseHTTPMiddleware):
                 call_next(request),
                 timeout=self._timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log_api.warning(
                 "Timeout en %s después de %.0f s",
                 request.url.path,

@@ -39,7 +39,10 @@ class TestDBActionSink:
 class TestCombinedSink:
     def test_fans_out_to_all(self, mem_db):
         seen = []
-        memory_sink = lambda req, res: seen.append((req.tool_name, res.ok))
+
+        def memory_sink(req, res):
+            seen.append((req.tool_name, res.ok))
+
         db_sink = DBActionSink(mem_db)
 
         sink = combined_sink(memory_sink, db_sink)
@@ -53,7 +56,10 @@ class TestCombinedSink:
             raise RuntimeError("boom")
 
         seen = []
-        good = lambda req, res: seen.append(req.tool_name)
+
+        def good(req, res):
+            seen.append(req.tool_name)
+
         sink = combined_sink(broken, good)
         sink(_req("x", {}), ToolResult.success(None))
         assert seen == ["x"]   # el sink bueno recibió pese al fallo del otro

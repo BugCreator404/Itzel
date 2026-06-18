@@ -19,18 +19,18 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
 
-from itzel_cli.main import app
 from itzel_cli.client import (
-    BackendOfflineError,
     BackendError,
+    BackendOfflineError,
     BackendStatus,
     ModelInfo,
 )
+from itzel_cli.main import app
 
 runner = CliRunner()
 
@@ -462,12 +462,14 @@ class TestSetup:
             mock_client.is_alive.return_value = False
             mock_cls.return_value = mock_client
 
-            # idioma=1, backend=2(none), config no existe → se escribe sola
-            r = runner.invoke(app, ["setup"], input="1\n2\n")
+            # El wizard tiene 7 pasos: idioma → backend → modelo → hotkey →
+            # voz → guardar. Respuestas: idioma=1(es-MX), backend=2(none),
+            # hotkey=1(ctrl+space), voz=n(no). Config no existe → se escribe sola.
+            r = runner.invoke(app, ["setup"], input="1\n2\n1\nn\n")
 
         assert r.exit_code == 0
         assert "Paso 1" in r.output
-        assert "Paso 5" in r.output
+        assert "Paso 7" in r.output
 
     def test_setup_writes_config_file(self, tmp_path):
         config_file = tmp_path / "itzel.config.json"
@@ -485,13 +487,16 @@ class TestSetup:
             mock_client.is_alive.return_value = False
             mock_cls.return_value = mock_client
 
-            runner.invoke(app, ["setup"], input="1\n1\n")
+            # Sin ollama ni llamacpp, el único backend es "none" (opción 1).
+            # idioma=1, backend=1(none), hotkey=1, voz=n → la config se escribe.
+            runner.invoke(app, ["setup"], input="1\n1\n1\nn\n")
 
-        if config_file.exists():
-            data = json.loads(config_file.read_text(encoding="utf-8"))
-            assert data["telemetry"] is False
-            assert data["analytics"] is False
-            assert "model" in data
+        # Ahora la config SÍ debe quedar escrita (antes el test pasaba en vacío).
+        assert config_file.exists()
+        data = json.loads(config_file.read_text(encoding="utf-8"))
+        assert data["telemetry"] is False
+        assert data["analytics"] is False
+        assert "model" in data
 
 
 # ─── tests de client.py ───────────────────────────────────────────────────────
@@ -503,13 +508,13 @@ class TestClient:
         assert client.is_alive() is False
 
     def test_require_alive_raises_offline_error(self):
-        from itzel_cli.client import ItzelClient, BackendOfflineError
+        from itzel_cli.client import BackendOfflineError, ItzelClient
         client = ItzelClient("http://127.0.0.1:1")
         with pytest.raises(BackendOfflineError):
             client.require_alive()
 
     def test_load_session_returns_uuid(self, tmp_path):
-        from itzel_cli.client import ItzelClient, _SESSION_FILE
+        from itzel_cli.client import ItzelClient
         session_file = tmp_path / "cli_session.json"
 
         with patch("itzel_cli.client._SESSION_FILE", session_file):
@@ -538,7 +543,7 @@ class TestClient:
         assert sid1 != sid2
 
     def test_stream_chat_raises_offline_error(self):
-        from itzel_cli.client import ItzelClient, BackendOfflineError
+        from itzel_cli.client import BackendOfflineError, ItzelClient
         client = ItzelClient("http://127.0.0.1:1")
         with pytest.raises(BackendOfflineError):
             list(client.stream_chat("hola"))

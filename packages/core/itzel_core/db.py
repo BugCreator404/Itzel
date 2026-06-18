@@ -24,7 +24,7 @@ import os
 import secrets
 import threading
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # SQLCipher si está disponible; si no, sqlite3 estándar (sin cifrado real).
 try:
@@ -53,7 +53,7 @@ def _generate_key() -> str:
     return secrets.token_hex(32)
 
 
-def get_or_create_key() -> Optional[str]:
+def get_or_create_key() -> str | None:
     """
     Obtiene la clave de cifrado de la BD, creándola en el primer arranque.
 
@@ -139,7 +139,7 @@ class Database:
     def __init__(
         self,
         path: Path | str = DB_PATH,
-        key:  Optional[str] = "__auto__",
+        key:  str | None = "__auto__",
     ) -> None:
         self._path = path
         self._is_memory = str(path) == ":memory:"
@@ -236,7 +236,7 @@ class Database:
 
         plain = sqlite.connect(str(src))
         try:
-            safe_key = self._key.replace("'", "''")
+            safe_key = (self._key or "").replace("'", "''")
             safe_path = str(tmp_enc).replace("'", "''")
             plain.execute(f"ATTACH DATABASE '{safe_path}' AS enc KEY '{safe_key}'")
             plain.execute("SELECT sqlcipher_export('enc')")
@@ -382,7 +382,7 @@ class Database:
         with self._lock:
             self._conn.close()
 
-    def __enter__(self) -> "Database":
+    def __enter__(self) -> Database:
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -391,7 +391,7 @@ class Database:
 
 # ─── instancia compartida (lazy) ──────────────────────────────────────────────
 
-_shared: Optional[Database] = None
+_shared: Database | None = None
 _shared_lock = threading.Lock()
 
 

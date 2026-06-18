@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -11,7 +10,21 @@ from rich.panel import Panel
 from rich.text import Text
 
 from . import __version__
-from .commands import ask, chat, config, doctor, memory, mcp, model, run, skills, status, uninstall, update, voice
+from .commands import (
+    ask,
+    chat,
+    config,
+    doctor,
+    mcp,
+    memory,
+    model,
+    run,
+    skills,
+    status,
+    uninstall,
+    update,
+    voice,
+)
 
 console = Console()
 app = typer.Typer(
@@ -35,7 +48,7 @@ def ask_cmd(
     question: str = typer.Argument(..., help="Pregunta para Itzel"),
     json_output: bool = typer.Option(False, "--json", help="Output en JSON"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Sin output extra"),
-    model_name: Optional[str] = typer.Option(None, "--model", "-m", help="Modelo a usar"),
+    model_name: str | None = typer.Option(None, "--model", "-m", help="Modelo a usar"),
 ) -> None:
     """Hace una pregunta y obtiene respuesta directa. Soporta stdin."""
     ask.run(question=question, json_output=json_output, quiet=quiet, model_name=model_name)
@@ -53,8 +66,8 @@ def run_cmd(
 
 @app.command(name="chat")
 def chat_cmd(
-    context: Optional[str] = typer.Option(None, "--context", "-c", help="Ruta de contexto"),
-    model_name: Optional[str] = typer.Option(None, "--model", "-m", help="Modelo a usar"),
+    context: str | None = typer.Option(None, "--context", "-c", help="Ruta de contexto"),
+    model_name: str | None = typer.Option(None, "--model", "-m", help="Modelo a usar"),
 ) -> None:
     """Abre un chat interactivo en la terminal con historial persistente."""
     chat.run(context=context, model_name=model_name)
@@ -62,11 +75,20 @@ def chat_cmd(
 
 @app.command(name="voice")
 def voice_cmd(
-    stt: str = typer.Option("whisper-small", "--stt", help="Modelo STT a usar"),
-    tts: str = typer.Option("kokoro", "--tts", help="Motor TTS a usar"),
+    model: str = typer.Option(
+        "small", "--model", "-m",
+        help="Modelo Whisper STT: tiny | base | small | medium | large-v3",
+    ),
+    mode: str = typer.Option(
+        "always", "--mode", help="Modo de escucha: always (VAD) | hotkey (Enter)",
+    ),
+    language: str = typer.Option("es", "--language", "-l", help="Idioma: es | en"),
+    download: bool = typer.Option(
+        False, "--download", help="Descarga los modelos de voz antes de empezar",
+    ),
 ) -> None:
     """Activa el modo de voz. Habla y Itzel responde con audio. Ctrl+C para salir."""
-    voice.run(stt=stt, tts=tts)
+    voice.run(model=model, mode=mode, language=language, download=download)
 
 
 @app.command(name="setup")

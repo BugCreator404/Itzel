@@ -18,20 +18,18 @@ Checks que realiza:
 
 from __future__ import annotations
 
-import platform
 import shutil
 import socket
 import sys
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 
-from ..output import console, hint
+from ..output import console
 
 # ─── tipos ────────────────────────────────────────────────────────────────────
 
-class _Status(str, Enum):
+class _Status(StrEnum):
     OK   = "ok"
     WARN = "warn"
     FAIL = "fail"
