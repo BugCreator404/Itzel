@@ -27,6 +27,25 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Memoria semántica (RAG). OPCIONAL a propósito: sin estas dependencias el
+# core arranca igual y los endpoints/CLI de RAG degradan con un aviso (501)
+# en vez de fallar. Instálalo con:  pip install 'itzel-core[rag]'
+#   - chromadb         → base vectorial local (sin servidor), 100% on-device.
+#   - onnxruntime +    → modelo de embeddings de respaldo (all-MiniLM-L6-v2)
+#     tokenizers          cuando Ollama no está disponible. Sin red, sin APIs.
+#   - watchdog         → indexado incremental en vivo (vigila las carpetas).
+#   - pypdf            → extracción de texto de PDFs.
+#   - python-docx      → extracción de texto de .docx.
+# Nota: chromadb fija typer a una versión menor; por eso vive en su propio
+# extra y no contamina la instalación base del CLI.
+rag = [
+  "chromadb>=1.0.0",
+  "onnxruntime>=1.16.0",
+  "tokenizers>=0.20.0",
+  "watchdog>=4.0.0",
+  "pypdf>=4.0.0",
+  "python-docx>=1.1.0",
+]
 dev = [
   "pytest>=8.2.0",
   "pytest-asyncio>=0.23.7",

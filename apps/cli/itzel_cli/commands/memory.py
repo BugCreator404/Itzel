@@ -4,9 +4,9 @@ Accede a la memoria de Itzel en la BD cifrada (~/.itzel/memory.db).
 No requiere que el backend esté corriendo — operación local pura.
 
 Subcomandos:
-  search <query>     — busca en el historial de mensajes
+  search <query>     — busca en el historial (o en tus documentos con --docs)
   list               — lista las conversaciones con conteo de mensajes
-  clear              — borra toda la memoria (con confirmación)
+  clear              — borra la memoria de chat (o el índice con --vectors)
   export [path]      — exporta a JSON legible (vía backend)
   backup [path]      — backup cifrado portable (.db.enc, con passphrase)
   restore <archivo>  — restaura un backup .db.enc (con confirmación)
@@ -47,8 +47,15 @@ def search(
     limit:   int = typer.Option(20, "--limit", "-n", help="Máximo de resultados"),
     session: str | None = typer.Option(None, "--session", "-s", help="Filtrar por session_id"),
     role:    str | None = typer.Option(None, "--role", "-r", help="Filtrar por rol: user | assistant"),
+    docs:    bool = typer.Option(False, "--docs", "-d", help="Buscar en tus documentos indexados (memoria semántica)"),
+    file_types: str | None = typer.Option(None, "--type", "-t", help="Con --docs: filtra por extensión, ej: .md,.pdf"),
+    folder:  str | None = typer.Option(None, "--folder", "-f", help="Con --docs: acota a una carpeta"),
 ) -> None:
-    """Busca en la memoria por texto."""
+    """Busca en el historial de chat, o en tus documentos con --docs (semántica)."""
+    if docs:
+        _search_docs(query, limit, file_types, folder)
+        return
+
     store = _open_store()
     if store is None:
         return
@@ -142,8 +149,13 @@ def list_sessions(
 def clear(
     yes:     bool = typer.Option(False, "--yes", "-y", help="Sin confirmación"),
     session: str | None = typer.Option(None, "--session", "-s", help="Borrar solo esta sesión"),
+    vectors: bool = typer.Option(False, "--vectors", help="Borra el índice vectorial (documentos), no el chat"),
 ) -> None:
-    """Borra la memoria (toda o una conversación específica)."""
+    """Borra la memoria de chat, una sesión, o el índice vectorial con --vectors."""
+    if vectors:
+        _clear_vectors(yes)
+        return
+
     store = _open_store()
     if store is None:
         return
@@ -393,6 +405,98 @@ def _open_store():
     except Exception as exc:
         err(f"No se pudo abrir la memoria: {exc}")
         return None
+
+
+# ─── memoria semántica (RAG) ──────────────────────────────────────────────────
+
+def _rag_available() -> bool:
+    """True si el RAG tiene sus dependencias; si no, imprime cómo instalarlas."""
+    try:
+        from itzel_core.rag import check_rag_available
+    except ImportError:
+        err("itzel-core no está instalado.", hint="pip install -e packages/core")
+        return False
+    try:
+        ok_, missing = check_rag_available()
+    except Exception as exc:
+        err(f"No se pudo cargar el RAG: {exc}")
+        return False
+    if not ok_:
+        err("Faltan dependencias de la memoria semántica: " + ", ".join(missing))
+        hint("Instálalas con: pip install 'itzel-core[rag]'")
+        return False
+    return True
+
+
+def _search_docs(
+    query: str, limit: int, file_types: str | None, folder: str | None,
+) -> None:
+    """Búsqueda semántica sobre los documentos indexados (todo local)."""
+    try:
+        from itzel_core.config import config
+    except ImportError:
+        err("itzel-core no está instalado.", hint="pip install -e packages/core")
+        return
+    if not config.rag.enabled:
+        warn("La memoria semántica (RAG) está desactivada.")
+        hint("Actívala con: itzel config rag.enabled true")
+        return
+    if not _rag_available():
+        return
+
+    from itzel_core.rag.retriever import get_retriever
+    types = [t.strip() for t in file_types.split(",")] if file_types else None
+    try:
+        hits = get_retriever().search(query, top_k=limit, file_types=types, folder=folder)
+    except Exception as exc:
+        err(f"No se pudo buscar en los documentos: {exc}")
+        return
+
+    if not hits:
+        warn(f"Sin documentos relevantes para '{query}'.")
+        hint("¿Ya indexaste tus carpetas? Revisa rag.index_dirs y re-indexa.")
+        return
+
+    console.print(f"\n[bold #f9a8d4]Documentos relevantes — \"{query}\"[/]\n")
+    for i, h in enumerate(hits, 1):
+        score = f"{h.score * 100:.0f}%"
+        console.print(
+            f"[bold #4ecdc4]{i}.[/] [#f9a8d4]{h.filename}[/]  "
+            f"[dim]{score} · {h.source}[/]"
+        )
+        snippet = _highlight(h.snippet.replace("\n", " "), query)
+        console.print(f"   {snippet}\n")
+    console.print(f"[dim]{len(hits)} fragmento(s) — los vectores nunca salen de tu equipo.[/]")
+
+
+def _clear_vectors(yes: bool) -> None:
+    """Borra el índice vectorial. NO toca los documentos originales."""
+    if not _rag_available():
+        return
+
+    from itzel_core.rag.store import get_store
+    try:
+        store = get_store()
+        count = store.count()
+    except Exception as exc:
+        err(f"No se pudo abrir el índice: {exc}")
+        return
+
+    if count == 0:
+        warn("El índice vectorial ya está vacío.")
+        return
+    if not yes:
+        confirm(
+            f"¿Borrar el índice vectorial? ({count} fragmento(s) de tus documentos). "
+            "Tus archivos originales NO se tocan."
+        )
+    try:
+        removed = store.reset()
+    except Exception as exc:
+        err(f"No se pudo borrar el índice: {exc}")
+        return
+    ok(f"Índice vectorial borrado — {removed} fragmento(s) eliminados.")
+    hint("Tus documentos originales siguen intactos. Re-indexa cuando quieras.")
 
 
 def _fmt_date(iso: str | None) -> str:

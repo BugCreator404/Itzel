@@ -19,10 +19,20 @@ const API_BASE = "http://localhost:7432/api/v1";
 
 export type StreamStatus = "idle" | "streaming" | "done" | "error";
 
+/** Una fuente citada por el RAG; cada [n] del texto mapea a un archivo. */
+export interface ChatSource {
+  n:          number;
+  source:     string;     // ruta completa del documento
+  filename:   string;     // nombre para mostrar
+  file_type?: string;
+  modified?:  string;
+}
+
 export interface ChatStreamState {
   status:     StreamStatus;
   buffer:     string;       // tokens acumulados de la respuesta en curso
   error:      string | null;
+  sources:    ChatSource[]; // fuentes citadas por el RAG ([] si no se usó)
   sessionId:  string;
   /** Envía un mensaje y arranca el stream */
   send:       (message: string, model?: string) => Promise<void>;
@@ -38,6 +48,7 @@ export function useChatStream(): ChatStreamState {
   const [status,    setStatus]    = useState<StreamStatus>("idle");
   const [buffer,    setBuffer]    = useState("");
   const [error,     setError]     = useState<string | null>(null);
+  const [sources,   setSources]   = useState<ChatSource[]>([]);
   const [sessionId, setSessionId] = useState(() => uuidv4());
 
   // AbortController para cancelar el fetch en curso
@@ -54,6 +65,7 @@ export function useChatStream(): ChatStreamState {
     cancel();
     setBuffer("");
     setError(null);
+    setSources([]);
     setStatus("idle");
     setSessionId(uuidv4());   // nueva sesión = nuevo historial
   }, [cancel]);
@@ -66,6 +78,7 @@ export function useChatStream(): ChatStreamState {
     // Limpiar estado anterior
     setBuffer("");
     setError(null);
+    setSources([]);
     setStatus("streaming");
 
     const ctrl = new AbortController();
@@ -117,6 +130,19 @@ export function useChatStream(): ChatStreamState {
             return;
           }
 
+          // Frame de control RAG: data: [SOURCES]{"sources":[...]}
+          if (token.startsWith("[SOURCES]")) {
+            try {
+              const data = JSON.parse(token.slice("[SOURCES]".length));
+              if (Array.isArray(data.sources)) {
+                setSources(data.sources as ChatSource[]);
+              }
+            } catch {
+              // Frame malformado — ignorar, nunca romper el chat.
+            }
+            continue;
+          }
+
           // Token normal — acumular en buffer
           setBuffer(prev => prev + token);
         }
@@ -137,5 +163,5 @@ export function useChatStream(): ChatStreamState {
     }
   }, [status, sessionId]);
 
-  return { status, buffer, error, sessionId, send, cancel, reset };
+  return { status, buffer, error, sources, sessionId, send, cancel, reset };
 }

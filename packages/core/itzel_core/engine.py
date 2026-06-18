@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.v1 import chat, health, models, status, voice
+from .api.v1 import chat, health, models, rag, status, voice
 from .api.v1 import websocket as ws_route
 from .config import config
 from .logger import log_engine
@@ -63,6 +63,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             extra={"component": "engine"},
         )
 
+    # ── RAG: vigilancia en vivo de tus documentos (opt-in: rag.watch) ─
+    # start_watching() es auto-protegido: respeta rag.watch, requiere watchdog
+    # y solo vigila si hay index_dirs. Nunca bloquea ni rompe el arranque.
+    rag_indexer = None
+    if config.rag.enabled and config.rag.watch:
+        try:
+            from .rag import check_rag_available
+            available, _missing = check_rag_available()
+            if available:
+                from .rag.indexer import get_indexer
+                rag_indexer = get_indexer()
+                if rag_indexer.start_watching():
+                    log_engine.info(
+                        "RAG: vigilando tus carpetas para indexado en vivo",
+                        extra={"component": "engine"},
+                    )
+        except Exception as exc:
+            log_engine.warning(
+                "No se pudo iniciar la vigilancia RAG: %s", exc,
+                extra={"component": "engine"},
+            )
+
     elapsed = time.time() - _START_TS
     log_engine.info(
         "Backend listo en %.2fs — escuchando en %s:%d",
@@ -73,6 +95,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # ── Teardown ────────────────────────────────────────────────────
+    if rag_indexer is not None:
+        rag_indexer.stop_watching()
     log_engine.info("Itzel backend detenido", extra={"component": "engine"})
 
 
@@ -109,6 +133,12 @@ def create_app() -> FastAPI:
     app.include_router(chat.router,    prefix="/api/v1")
     app.include_router(status.router,  prefix="/api/v1")
     app.include_router(models.router,  prefix="/api/v1")
+
+    # ── Memoria semántica (RAG) /api/v1/rag ──────────────────────────
+    # Se monta SIEMPRE: el router se auto-protege (503 si rag.enabled=False,
+    # 501 si faltan las deps opcionales [rag]). Así la UI "Mis documentos"
+    # puede consultar /rag/status y ofrecer activarlo, en vez de un 404.
+    app.include_router(rag.router,     prefix="/api/v1")
 
     # ── WebSocket /ws (chat bridge) ──────────────────────────────────
     app.include_router(ws_route.router)

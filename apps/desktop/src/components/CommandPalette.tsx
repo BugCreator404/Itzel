@@ -114,6 +114,16 @@ function buildActions(onClose: () => void): PaletteAction[] {
       }),
     },
     {
+      id:          "open-documents",
+      icon:        "📂",
+      label:       "Mis documentos",
+      description: "Gestiona la memoria semántica: carpetas, re-indexar, limpiar",
+      keywords:    ["documentos", "docs", "rag", "memoria", "índice", "indexar", "buscar", "archivos"],
+      run: close(() => {
+        window.dispatchEvent(new CustomEvent("itzel:open-documents"));
+      }),
+    },
+    {
       id:          "install-skill",
       icon:        "🔌",
       label:       "Instalar skill",

@@ -166,6 +166,47 @@ body {
 .msg--assistant .msg-content { background: var(--bg2); border: 1px solid var(--b);  color: var(--t2); }
 .msg--streaming .msg-content { border-color: #f9a8d430; }
 
+/* ─── Citas del RAG (fuentes plegables) ──────────────────────── */
+.cite {
+  margin-top: .35rem;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.cite-toggle {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--b2);
+  border-radius: 999px;
+  color: var(--teal);
+  font-size: 11px;
+  padding: .15rem .55rem;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.cite-toggle:hover { border-color: var(--teal); color: var(--green); }
+
+.cite-list {
+  list-style: none;
+  margin: 0;
+  padding: .35rem .5rem;
+  background: var(--bg3);
+  border: 1px solid var(--b);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.cite-item {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  font-size: 12px;
+  color: var(--t2);
+}
+.cite-n    { color: var(--lilac); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.cite-file { word-break: break-word; }
+
 /* ─── Cursor parpadeante ─────────────────────────────────────── */
 @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: 0 } }
 .cursor-blink { animation: blink 1s step-end infinite; color: var(--pink); }
@@ -607,4 +648,250 @@ body {
   font-size: 10px;
   color: var(--t2);
   margin-right: 3px;
+}
+
+/* ─── Mis documentos (RAG) ───────────────────────────────────── */
+.docs-overlay {
+  position: fixed;
+  inset: 0;
+  background: #00000088;
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.docs-panel {
+  width: min(560px, 92vw);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border: 1px solid var(--b2);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px #00000070;
+  overflow: hidden;
+}
+
+.docs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 8px;
+}
+
+.docs-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--t);
+}
+
+.docs-close {
+  background: none;
+  border: none;
+  color: var(--t3);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .15s;
+}
+.docs-close:hover { color: var(--pink); }
+
+.docs-subtitle {
+  padding: 0 18px 10px;
+  font-size: 12px;
+  color: var(--t2);
+}
+
+.docs-body {
+  padding: 4px 18px 12px;
+  overflow-y: auto;
+}
+
+.docs-muted { color: var(--t2); font-size: 13px; }
+.docs-error { color: var(--red);  font-size: 13px; }
+
+.docs-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--bg3);
+  border: 1px solid var(--b);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--t);
+}
+
+.docs-code {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--teal);
+  background: var(--bg);
+  border: 1px solid var(--b);
+  border-radius: 6px;
+  padding: 6px 9px;
+  user-select: all;
+}
+
+/* Resumen */
+.docs-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--t2);
+  padding: 4px 0 12px;
+}
+.docs-stats strong { color: var(--t); }
+
+.docs-badge-priv {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--green);
+  border: 1px solid #6ee7b740;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+/* Progreso */
+.docs-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.docs-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+
+.docs-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pink), var(--lilac));
+  transition: width .3s ease;
+}
+
+.docs-progress-label {
+  font-size: 11px;
+  color: var(--t2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estados vacíos */
+.docs-empty {
+  font-size: 13px;
+  color: var(--t2);
+  text-align: center;
+  padding: 22px 10px;
+}
+
+/* Lista de carpetas */
+.docs-dirs {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.docs-dir {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  background: var(--bg3);
+  border: 1px solid var(--b);
+  border-radius: 9px;
+}
+
+.docs-dir-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.docs-dir-path {
+  font-size: 12px;
+  color: var(--t);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;       /* corta por el inicio: deja ver el nombre de la carpeta */
+  text-align: left;
+}
+.docs-dir-path--missing { color: var(--red); text-decoration: line-through; }
+
+.docs-dir-count {
+  font-size: 11px;
+  color: var(--t3);
+}
+
+.docs-dir-remove {
+  background: none;
+  border: none;
+  color: var(--t3);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.docs-dir-remove:hover { color: var(--red); }
+
+/* Acciones */
+.docs-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--b);
+  flex-wrap: wrap;
+}
+
+.docs-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docs-confirm-q {
+  font-size: 12px;
+  color: var(--t2);
+}
+
+.docs-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--b2);
+  background: var(--bg3);
+  color: var(--t);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.docs-btn:hover:not(:disabled) { border-color: var(--lilac); }
+.docs-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.docs-btn--primary {
+  background: linear-gradient(160deg, var(--pink), var(--lilac));
+  color: #1a1828;
+  border-color: transparent;
+}
+.docs-btn--ghost { background: none; color: var(--t2); }
+.docs-btn--danger {
+  background: none;
+  color: var(--red);
+  border-color: #fb718560;
 }

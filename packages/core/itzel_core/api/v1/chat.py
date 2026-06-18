@@ -16,6 +16,7 @@ Flujo completo:
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
@@ -59,6 +60,41 @@ class ChatResponse(BaseModel):
 
 def _sse(data: str) -> str:
     return f"data: {data}\n\n"
+
+
+# ── RAG: contexto de los documentos del usuario ──────────────────────────────
+
+def _maybe_augment_with_rag(
+    messages: list[dict],
+    language: str,
+) -> tuple[list[dict], list[dict]]:
+    """Inyecta contexto de los documentos del usuario en el último turno.
+
+    ES: Opt-in doble (rag.enabled + rag.auto_context, ya verificado por el
+        caller). Degrada en SILENCIO ante cualquier fallo — deps faltantes,
+        índice vacío o error de búsqueda → devuelve los mensajes sin tocar y
+        sin fuentes. El chat nunca se rompe por culpa del RAG.
+
+    EN: Augments the last user turn with document context. Fails silently:
+        on any error the chat continues normally without context.
+
+    Devuelve (mensajes, fuentes). `fuentes` es [] si no se inyectó contexto.
+    """
+    try:
+        from ...rag import check_rag_available
+        available, _missing = check_rag_available()
+        if not available:
+            return messages, []
+
+        from ...rag.pipeline import get_pipeline
+        augmented, ctx = get_pipeline().augment_messages(messages, language=language)
+        return augmented, ctx.sources
+    except Exception as exc:
+        log_api.warning(
+            "RAG auto_context falló; sigo sin contexto: %s", exc,
+            extra={"component": "chat"},
+        )
+        return messages, []
 
 
 # ── Stream principal ───────────────────────────────────────────────────────
@@ -111,6 +147,12 @@ async def _stream_tokens(
             new_message   = message,
         )
 
+        # 3.5 RAG (opt-in doble): inyecta contexto de los documentos del usuario.
+        #     Si está apagado o falla, `messages` queda intacto y rag_sources=[].
+        rag_sources: list[dict] = []
+        if config.rag.enabled and config.rag.auto_context:
+            messages, rag_sources = _maybe_augment_with_rag(messages, language)
+
         # 4. Inferencia
         params = GenerationParams(
             temperature = config.model.temperature,
@@ -120,6 +162,13 @@ async def _stream_tokens(
         async for token in adapter.stream(messages, params):
             accumulated.append(token)
             yield _sse(token)
+
+        # Fuentes citadas (solo si el RAG inyectó contexto). Frame de control
+        # antes de [DONE]; el frontend mapea cada [n] a su archivo.
+        if rag_sources:
+            yield _sse("[SOURCES]" + json.dumps(
+                {"sources": rag_sources}, ensure_ascii=False,
+            ))
 
         yield _sse("[DONE]")
 
@@ -206,6 +255,8 @@ async def chat(req: ChatRequest, request: Request) -> StreamingResponse | ChatRe
         payload = raw[6:].strip()
         if payload in ("[DONE]", "[ERROR]", "[CANCELLED]"):
             break
+        if payload.startswith("[SOURCES]"):
+            continue   # marco de control RAG, no es texto de la respuesta
         tokens.append(payload)
 
     adapter_info = await (await get_adapter()).info()
