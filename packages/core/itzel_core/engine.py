@@ -63,6 +63,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             extra={"component": "engine"},
         )
 
+    # ── RAG: vigilancia en vivo de tus documentos (opt-in: rag.watch) ─
+    # start_watching() es auto-protegido: respeta rag.watch, requiere watchdog
+    # y solo vigila si hay index_dirs. Nunca bloquea ni rompe el arranque.
+    rag_indexer = None
+    if config.rag.enabled and config.rag.watch:
+        try:
+            from .rag import check_rag_available
+            available, _missing = check_rag_available()
+            if available:
+                from .rag.indexer import get_indexer
+                rag_indexer = get_indexer()
+                if rag_indexer.start_watching():
+                    log_engine.info(
+                        "RAG: vigilando tus carpetas para indexado en vivo",
+                        extra={"component": "engine"},
+                    )
+        except Exception as exc:
+            log_engine.warning(
+                "No se pudo iniciar la vigilancia RAG: %s", exc,
+                extra={"component": "engine"},
+            )
+
     elapsed = time.time() - _START_TS
     log_engine.info(
         "Backend listo en %.2fs — escuchando en %s:%d",
@@ -73,6 +95,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # ── Teardown ────────────────────────────────────────────────────
+    if rag_indexer is not None:
+        rag_indexer.stop_watching()
     log_engine.info("Itzel backend detenido", extra={"component": "engine"})
 
 

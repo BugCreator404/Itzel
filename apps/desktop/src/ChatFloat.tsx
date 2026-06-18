@@ -12,7 +12,7 @@ import {
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
-import { useChatStream } from "./hooks/useChatStream";
+import { useChatStream, type ChatSource } from "./hooks/useChatStream";
 import { useMascotaMood } from "./hooks/useMascotaMood";
 import { Mascota } from "./components/Mascota";
 import { CommandPalette } from "./components/CommandPalette";
@@ -26,6 +26,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  sources?: ChatSource[];   // fuentes citadas por el RAG (solo asistente)
 }
 
 interface SavedPos { x: number; y: number }
@@ -110,6 +111,7 @@ export function ChatFloat() {
           id:      crypto.randomUUID(),
           role:    "assistant",
           content: chat.buffer + (chat.error ? `\n\n⚠ ${chat.error}` : ""),
+          sources: chat.sources,
         },
       ]);
     }
@@ -250,6 +252,9 @@ export function ChatFloat() {
           <div key={m.id} className={`msg msg--${m.role}`}>
             <span className="msg-label">{m.role === "user" ? "Tú" : "Itzel"}</span>
             <p className="msg-content">{m.content}</p>
+            {m.role === "assistant" && m.sources && m.sources.length > 0 && (
+              <Citations sources={m.sources} />
+            )}
           </div>
         ))}
 
@@ -314,6 +319,40 @@ export function ChatFloat() {
         <MisDocumentos onClose={() => setDocsOpen(false)} />
       )}
 
+    </div>
+  );
+}
+
+// ─── citas del RAG ──────────────────────────────────────────────────────────
+
+/**
+ * Footer plegable con las fuentes citadas por el RAG. Cada [n] del texto de
+ * Itzel corresponde a un archivo aquí. Colapsado por defecto para no estorbar.
+ */
+function Citations({ sources }: { sources: ChatSource[] }) {
+  const [open, setOpen] = useState(false);
+  const label = sources.length === 1 ? "fuente" : "fuentes";
+
+  return (
+    <div className="cite">
+      <button
+        className="cite-toggle"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        title="Documentos usados para esta respuesta"
+      >
+        📎 {sources.length} {label} {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <ul className="cite-list">
+          {sources.map(s => (
+            <li key={s.n} className="cite-item" title={s.source}>
+              <span className="cite-n">[{s.n}]</span>
+              <span className="cite-file">{s.filename}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

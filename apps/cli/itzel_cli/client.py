@@ -200,6 +200,8 @@ class ItzelClient:
                             break
                         if data == "[ERROR]":
                             break
+                        if data.startswith("[SOURCES]"):
+                            continue   # frame de control RAG, no es texto
                         yield data
 
         except (BackendOfflineError, BackendError):

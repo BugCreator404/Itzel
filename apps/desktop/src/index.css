@@ -166,6 +166,47 @@ body {
 .msg--assistant .msg-content { background: var(--bg2); border: 1px solid var(--b);  color: var(--t2); }
 .msg--streaming .msg-content { border-color: #f9a8d430; }
 
+/* ─── Citas del RAG (fuentes plegables) ──────────────────────── */
+.cite {
+  margin-top: .35rem;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.cite-toggle {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--b2);
+  border-radius: 999px;
+  color: var(--teal);
+  font-size: 11px;
+  padding: .15rem .55rem;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.cite-toggle:hover { border-color: var(--teal); color: var(--green); }
+
+.cite-list {
+  list-style: none;
+  margin: 0;
+  padding: .35rem .5rem;
+  background: var(--bg3);
+  border: 1px solid var(--b);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.cite-item {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  font-size: 12px;
+  color: var(--t2);
+}
+.cite-n    { color: var(--lilac); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.cite-file { word-break: break-word; }
+
 /* ─── Cursor parpadeante ─────────────────────────────────────── */
 @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: 0 } }
 .cursor-blink { animation: blink 1s step-end infinite; color: var(--pink); }
