@@ -51,6 +51,7 @@ export function MisDocumentos({ onClose }: MisDocumentosProps) {
     clearIndex,
     addDir,
     removeDir,
+    setAutoContext,
   } = useDocuments();
 
   const [confirmClear, setConfirmClear] = useState(false);
@@ -103,6 +104,21 @@ export function MisDocumentos({ onClose }: MisDocumentosProps) {
             🔒 local · telemetría {status.telemetry}
           </span>
         </div>
+
+        {/* Toggle: usar los documentos como contexto en el chat (auto_context) */}
+        <label
+          className="docs-toggle"
+          title="Cuando está activo, Itzel responde en el chat usando tus documentos y cita las fuentes."
+        >
+          <input
+            type="checkbox"
+            checked={status.auto_context}
+            onChange={e => setAutoContext(e.target.checked)}
+            disabled={indexing}
+          />
+          <span className="docs-toggle-track" aria-hidden="true" />
+          <span className="docs-toggle-label">Usar mis documentos en el chat</span>
+        </label>
 
         {/* Barra de progreso del indexado */}
         {indexing && progress && (

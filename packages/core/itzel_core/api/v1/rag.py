@@ -72,6 +72,7 @@ class IndexStatus(BaseModel):
     enabled:      bool
     available:    bool
     missing_deps: list[str]
+    auto_context: bool = False   # si /chat inyecta tus documentos automáticamente
     embed_model:  str | None = None
     embed_dim:    int | None = None
     documents:    int = 0
@@ -90,6 +91,12 @@ class DirEntry(BaseModel):
 class DirAction(BaseModel):
     path:   str
     action: str   # "add" | "remove"
+
+
+class ConfigUpdate(BaseModel):
+    """Cambios de flags del RAG. Solo se aplican los campos presentes."""
+    enabled:      bool | None = None
+    auto_context: bool | None = None
 
 
 class SearchHit(BaseModel):
@@ -113,6 +120,7 @@ def rag_status() -> IndexStatus:
         enabled=config.rag.enabled,
         available=ok,
         missing_deps=missing,
+        auto_context=config.rag.auto_context,
     )
     if not ok:
         return base
@@ -199,6 +207,31 @@ def rag_dirs_update(action: DirAction) -> list[DirEntry]:
     log_api.info("index_dirs actualizado: %s %s", action.action, target,
                  extra={"component": "rag"})
     return rag_dirs()
+
+
+# ─── flags del RAG (enabled / auto_context) ──────────────────────────────────────
+
+@router.post("/config")
+def rag_config_update(update: ConfigUpdate) -> dict[str, Any]:
+    """Activa/desactiva el RAG entero (enabled) y/o el auto-contexto en /chat.
+
+    Sin guard a propósito: hay que poder ENCENDER el RAG aunque esté apagado.
+    Persiste con save_config() (telemetry/analytics se fuerzan a False ahí).
+    """
+    if update.enabled is not None:
+        config.rag.enabled = update.enabled
+    if update.auto_context is not None:
+        config.rag.auto_context = update.auto_context
+    save_config()
+    log_api.info(
+        "rag config: enabled=%s auto_context=%s",
+        config.rag.enabled, config.rag.auto_context,
+        extra={"component": "rag"},
+    )
+    return {
+        "enabled":      config.rag.enabled,
+        "auto_context": config.rag.auto_context,
+    }
 
 
 # ─── progreso ───────────────────────────────────────────────────────────────────

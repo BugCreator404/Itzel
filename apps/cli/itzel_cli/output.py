@@ -147,6 +147,24 @@ def print_token(token: str) -> None:
         console.file.flush()
 
 
+# ─── citas del RAG ────────────────────────────────────────────────────────────
+
+def print_sources(sources: list[dict]) -> None:
+    """Imprime el pie de 'Fuentes' con las citas del RAG ([n] → archivo).
+
+    `sources` es la lista que deja `ItzelClient.last_sources` (vacía si el
+    chat no usó tus documentos). No imprime nada si está vacía.
+    """
+    if not sources:
+        return
+    console.print()
+    console.print("[dim #9890b8]Fuentes:[/]")
+    for s in sources:
+        n  = s.get("n", "?")
+        fn = s.get("filename") or s.get("source") or "?"
+        console.print(f"  [#c4b5fd][{n}][/] [#9890b8]{fn}[/]")
+
+
 # ─── markdown rendering ───────────────────────────────────────────────────────
 
 def print_markdown(text: str) -> None:

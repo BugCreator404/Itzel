@@ -17,6 +17,7 @@ from ..client import BackendError, BackendOfflineError, ItzelClient
 from ..output import (
     console,
     err,
+    print_sources,
     print_token,
     warn,
 )
@@ -63,7 +64,12 @@ def run(
             )
             console.print_json(
                 json.dumps(
-                    {"status": "ok", "question": question, "answer": answer},
+                    {
+                        "status":   "ok",
+                        "question": question,
+                        "answer":   answer,
+                        "sources":  client.last_sources,
+                    },
                     ensure_ascii=False,
                     indent=2,
                 )
@@ -119,6 +125,8 @@ def run(
 
         if not quiet:
             console.print()   # nueva línea al terminar
+            # Pie con las fuentes citadas si el RAG inyectó contexto.
+            print_sources(client.last_sources)
 
         # En modo quiet imprimimos la respuesta completa de golpe
         if quiet:

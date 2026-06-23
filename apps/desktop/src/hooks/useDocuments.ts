@@ -47,6 +47,7 @@ export interface IndexStatus {
   enabled: boolean;
   available: boolean;
   missing_deps: string[];
+  auto_context: boolean;   // si /chat inyecta tus documentos automáticamente
   embed_model: string | null;
   embed_dim: number | null;
   documents: number;
@@ -77,6 +78,8 @@ export interface DocumentsState {
   clearIndex: () => Promise<void>;
   addDir: (path: string) => Promise<void>;
   removeDir: (path: string) => Promise<void>;
+  /** Enciende/apaga el auto-contexto (RAG en /chat). */
+  setAutoContext: (on: boolean) => Promise<void>;
 }
 
 // ─── helpers de red ────────────────────────────────────────────────────────────
@@ -234,6 +237,19 @@ export function useDocuments(): DocumentsState {
     []
   );
 
+  const setAutoContext = useCallback(
+    async (on: boolean) => {
+      setError(null);
+      try {
+        await apiPost("/rag/config", { auto_context: on });
+        await refresh();   // releer status para reflejar el flag
+      } catch {
+        setError("No se pudo cambiar el auto-contexto.");
+      }
+    },
+    [refresh]
+  );
+
   // ── montar / desmontar ───────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -266,5 +282,6 @@ export function useDocuments(): DocumentsState {
     clearIndex,
     addDir,
     removeDir,
+    setAutoContext,
   };
 }
