@@ -20,6 +20,7 @@ from ..output import (
     info,
     ok,
     print_header,
+    print_sources,
     print_token,
     warn,
 )
@@ -142,6 +143,7 @@ def _send_message(client: ItzelClient, message: str, session_id: str) -> None:
             # No llegó ningún token — backend no respondió nada
             warn("Sin respuesta del modelo.")
         else:
+            print_sources(client.last_sources)   # citas RAG si las hubo
             console.print("\n")   # separación visual
 
     except BackendOfflineError:

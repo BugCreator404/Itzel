@@ -756,6 +756,58 @@ body {
   padding: 2px 9px;
 }
 
+/* Toggle: usar mis documentos en el chat (auto_context) */
+.docs-toggle {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin: 0 0 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.docs-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.docs-toggle-track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--bg3);
+  border: 1px solid var(--b2);
+  transition: background .15s, border-color .15s;
+}
+.docs-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--t2);
+  transition: transform .15s, background .15s;
+}
+.docs-toggle input:checked + .docs-toggle-track {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.docs-toggle input:checked + .docs-toggle-track::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+.docs-toggle input:disabled + .docs-toggle-track { opacity: .5; }
+.docs-toggle input:focus-visible + .docs-toggle-track {
+  outline: 2px solid var(--lilac);
+  outline-offset: 2px;
+}
+.docs-toggle-label { font-size: 12px; color: var(--t2); }
+.docs-toggle input:checked ~ .docs-toggle-label { color: var(--t); }
+
 /* Progreso */
 .docs-progress {
   display: flex;

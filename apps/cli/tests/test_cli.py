@@ -76,6 +76,7 @@ class TestGlobal:
             mock_client = MagicMock()
             mock_client.switch_model.return_value = {}
             mock_client.chat_sync.return_value = "respuesta"
+            mock_client.last_sources = []
             mock_cls.return_value = mock_client
 
             r = runner.invoke(
@@ -97,6 +98,7 @@ class TestAsk:
         mock_client.stream_chat.return_value = iter(tokens)
         mock_client.chat_sync.return_value = "".join(tokens)
         mock_client.switch_model.return_value = {"model_id": "itzel-1b"}
+        mock_client.last_sources = []   # serializable por defecto (sin RAG)
         return mock_client
 
     def test_ask_streams_tokens(self):
@@ -167,6 +169,40 @@ class TestAsk:
 
             r = runner.invoke(app, ["ask", "hola"])
         assert "backend" in r.output.lower() or "Backend" in r.output
+
+    def test_ask_prints_rag_sources(self):
+        """Si el RAG citó documentos, ask imprime el pie 'Fuentes' con el archivo."""
+        with patch("itzel_cli.commands.ask.ItzelClient") as mock_cls:
+            mock_client = self._mock_stream(["Tu reunión es el lunes."])
+            mock_client.last_sources = [
+                {"n": 1, "source": "/docs/agenda.md", "filename": "agenda.md"}
+            ]
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["ask", "¿qué tengo el lunes?"])
+        assert r.exit_code == 0
+        assert "Fuentes" in r.output
+        assert "agenda.md" in r.output
+
+    def test_ask_json_includes_sources(self):
+        """El modo --json expone las fuentes citadas por el RAG."""
+        with patch("itzel_cli.commands.ask.ItzelClient") as mock_cls:
+            mock_client = self._mock_stream(["respuesta"])
+            mock_client.last_sources = [{"n": 1, "filename": "a.md", "source": "/x/a.md"}]
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["ask", "--json", "hola"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert data["sources"][0]["filename"] == "a.md"
+
+    def test_ask_no_sources_when_empty(self):
+        """Sin RAG (last_sources vacío), no aparece el pie 'Fuentes'."""
+        with patch("itzel_cli.commands.ask.ItzelClient") as mock_cls:
+            mock_client = self._mock_stream(["hola"])
+            mock_client.last_sources = []
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["ask", "hola"])
+        assert r.exit_code == 0
+        assert "Fuentes" not in r.output
 
 
 # ─── TestChat ─────────────────────────────────────────────────────────────────
@@ -499,6 +535,151 @@ class TestSetup:
         assert "model" in data
 
 
+# ─── TestTools ────────────────────────────────────────────────────────────────
+
+class TestTools:
+    def _catalog(self):
+        return {
+            "tools": [
+                {"name": "calc", "source": "skill", "description": "Calcula.", "input_schema": {}},
+                {"name": "read_file", "source": "agent:file", "description": "Lee un archivo.", "input_schema": {}},
+            ],
+            "total": 2,
+            "by_source": {"skill": 1, "agent": 1},
+        }
+
+    def test_tools_list_shows_catalog(self):
+        with patch("itzel_cli.commands.tools.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.list_tools.return_value = self._catalog()
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["tools", "list"])
+        assert r.exit_code == 0
+        assert "calc" in r.output
+        assert "read_file" in r.output
+
+    def test_tools_list_json(self):
+        with patch("itzel_cli.commands.tools.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.list_tools.return_value = self._catalog()
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["tools", "list", "--json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert data["total"] == 2
+        assert {t["name"] for t in data["tools"]} == {"calc", "read_file"}
+
+    def test_tools_list_empty(self):
+        with patch("itzel_cli.commands.tools.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.list_tools.return_value = {"tools": [], "total": 0, "by_source": {}}
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["tools", "list"])
+        assert r.exit_code == 0
+        assert "No hay herramientas" in r.output
+
+    def test_tools_list_offline(self):
+        with patch("itzel_cli.commands.tools.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.list_tools.side_effect = BackendOfflineError("http://127.0.0.1:7432")
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["tools", "list"])
+        assert r.exit_code == 1
+        assert "offline" in r.output.lower() or "backend" in r.output.lower()
+
+    # ── tools call (ejecución local con confirmación) ──
+
+    @staticmethod
+    def _fake_tool(name="echo", *, ok=True, value="hecho", denied=False):
+        from types import SimpleNamespace
+        res = SimpleNamespace(
+            ok=ok, value=value, error=None if ok else "boom", denied=denied,
+        )
+        return SimpleNamespace(
+            name=name,
+            description="Hace algo.",
+            schema={"input_schema": {"properties": {"text": {}}}},
+            invoke=lambda args, _r=res: _r,
+        )
+
+    def test_tools_call_invokes(self):
+        tool = self._fake_tool("echo", value="hecho")
+        with patch("itzel_cli.commands.tools.local_catalog", return_value=[tool]):
+            r = runner.invoke(app, ["tools", "call", "echo", "--args", '{"text":"hi"}'])
+        assert r.exit_code == 0
+        assert "hecho" in r.output
+
+    def test_tools_call_unknown(self):
+        with patch("itzel_cli.commands.tools.local_catalog", return_value=[]):
+            r = runner.invoke(app, ["tools", "call", "noexiste"])
+        assert r.exit_code == 1
+        assert "No existe" in r.output
+
+    def test_tools_call_bad_json(self):
+        r = runner.invoke(app, ["tools", "call", "echo", "--args", "no-json"])
+        assert r.exit_code == 1
+        assert "JSON" in r.output
+
+    def test_tools_call_no_core(self):
+        with patch("itzel_cli.commands.tools.local_catalog", return_value=None):
+            r = runner.invoke(app, ["tools", "call", "echo"])
+        assert r.exit_code == 1
+        assert "itzel-core" in r.output
+
+
+# ─── TestRun ──────────────────────────────────────────────────────────────────
+
+class TestRun:
+    @staticmethod
+    def _fake_tool(name="read_file", value="leído"):
+        from types import SimpleNamespace
+        res = SimpleNamespace(ok=True, value=value, error=None, denied=False)
+        return SimpleNamespace(
+            name=name, description="Lee un archivo.",
+            schema={"input_schema": {"properties": {"path": {}}}},
+            invoke=lambda args, _r=res: _r,
+        )
+
+    def test_run_executes_selected_tool(self):
+        tool = self._fake_tool("read_file", value="leído")
+        with patch("itzel_cli.commands.run.local_catalog", return_value=[tool]), \
+             patch("itzel_cli.commands.run.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.chat_sync.return_value = '{"tool": "read_file", "args": {"path": "/x"}}'
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["run", "lee el archivo /x"])
+        assert r.exit_code == 0
+        assert "leído" in r.output
+
+    def test_run_extracts_json_from_wrapped_text(self):
+        tool = self._fake_tool("read_file", value="ok")
+        with patch("itzel_cli.commands.run.local_catalog", return_value=[tool]), \
+             patch("itzel_cli.commands.run.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.chat_sync.return_value = 'Claro: {"tool": "read_file", "args": {"path": "/x"}} ¡listo!'
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["run", "lee /x"])
+        assert r.exit_code == 0
+        assert "ok" in r.output
+
+    def test_run_no_tool_match(self):
+        tool = self._fake_tool("read_file")
+        with patch("itzel_cli.commands.run.local_catalog", return_value=[tool]), \
+             patch("itzel_cli.commands.run.ItzelClient") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.chat_sync.return_value = '{"tool": null}'
+            mock_cls.return_value = mock_client
+            r = runner.invoke(app, ["run", "haz algo rarísimo"])
+        assert r.exit_code == 0
+        assert "No encontré" in r.output
+
+    def test_run_no_core(self):
+        with patch("itzel_cli.commands.run.local_catalog", return_value=None):
+            r = runner.invoke(app, ["run", "algo"])
+        assert r.exit_code == 0
+        assert "itzel-core" in r.output
+
+
 # ─── tests de client.py ───────────────────────────────────────────────────────
 
 class TestClient:
@@ -506,6 +687,23 @@ class TestClient:
         from itzel_cli.client import ItzelClient
         client = ItzelClient("http://127.0.0.1:1")  # puerto cerrado
         assert client.is_alive() is False
+
+    def test_capture_sources_parses_frame(self):
+        """El frame [SOURCES]{json} llena last_sources."""
+        from itzel_cli.client import ItzelClient
+        client = ItzelClient()
+        client._capture_sources(
+            '[SOURCES]{"sources": [{"n": 1, "filename": "a.md"}]}'
+        )
+        assert client.last_sources == [{"n": 1, "filename": "a.md"}]
+
+    def test_capture_sources_ignores_malformed(self):
+        """Un frame [SOURCES] malformado no rompe ni borra lo previo."""
+        from itzel_cli.client import ItzelClient
+        client = ItzelClient()
+        client.last_sources = [{"n": 1, "filename": "ok.md"}]
+        client._capture_sources("[SOURCES]no-es-json")
+        assert client.last_sources == [{"n": 1, "filename": "ok.md"}]
 
     def test_require_alive_raises_offline_error(self):
         from itzel_cli.client import BackendOfflineError, ItzelClient

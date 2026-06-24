@@ -21,6 +21,7 @@ from .commands import (
     run,
     skills,
     status,
+    tools,
     uninstall,
     update,
     voice,
@@ -41,6 +42,7 @@ app.add_typer(skills.app, name="skills")
 app.add_typer(config.app, name="config")
 app.add_typer(memory.app, name="memory")
 app.add_typer(mcp.app, name="mcp")
+app.add_typer(tools.app, name="tools")
 
 
 @app.command(name="ask")

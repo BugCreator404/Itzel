@@ -116,6 +116,10 @@ class ItzelClient:
             pool    = 5.0,
         )
 
+        # Fuentes RAG citadas en el último stream_chat() (del frame [SOURCES]).
+        # El comando las lee tras el stream para imprimir el pie "Fuentes".
+        self.last_sources: list[dict] = []
+
     # ── health ────────────────────────────────────────────────────────────────
 
     def is_alive(self) -> bool:
@@ -153,6 +157,22 @@ class ItzelClient:
         except httpx.HTTPStatusError as exc:
             raise BackendError(exc.response.status_code, exc.response.text) from exc
 
+    # ── tools ─────────────────────────────────────────────────────────────────
+
+    def list_tools(self, *, mcp: bool = False) -> dict[str, Any]:
+        """Catálogo de herramientas disponibles (GET /api/v1/tools)."""
+        self.require_alive()
+        try:
+            with httpx.Client(timeout=self._timeout) as c:
+                r = c.get(
+                    f"{self.base_url}/api/v1/tools",
+                    params={"mcp": "true" if mcp else "false"},
+                )
+                r.raise_for_status()
+                return r.json()
+        except httpx.HTTPStatusError as exc:
+            raise BackendError(exc.response.status_code, exc.response.text) from exc
+
     # ── chat / SSE ────────────────────────────────────────────────────────────
 
     def stream_chat(
@@ -173,6 +193,7 @@ class ItzelClient:
             BackendError:        si el backend responde con código >= 400.
         """
         self.require_alive()
+        self.last_sources = []   # se rellenan si el RAG inyecta contexto
 
         payload: dict[str, Any] = {
             "message":    message,
@@ -201,7 +222,8 @@ class ItzelClient:
                         if data == "[ERROR]":
                             break
                         if data.startswith("[SOURCES]"):
-                            continue   # frame de control RAG, no es texto
+                            self._capture_sources(data)   # citas RAG, no es texto
+                            continue
                         yield data
 
         except (BackendOfflineError, BackendError):
@@ -210,6 +232,19 @@ class ItzelClient:
             raise BackendOfflineError(self.base_url) from exc
         except httpx.TimeoutException as exc:
             raise BackendError(0, f"Timeout esperando respuesta: {exc}") from exc
+
+    def _capture_sources(self, data: str) -> None:
+        """Parsea el frame `[SOURCES]{json}` y guarda las fuentes RAG citadas.
+
+        Un frame malformado se ignora (nunca rompe el stream del chat).
+        """
+        try:
+            payload = json.loads(data[len("[SOURCES]"):])
+            srcs = payload.get("sources", [])
+            if isinstance(srcs, list):
+                self.last_sources = srcs
+        except Exception:
+            pass
 
     def chat_sync(
         self,
